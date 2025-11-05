@@ -5,8 +5,9 @@ import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
 import { useAuth } from '../../hooks/useAuth';
 import Logo from "../../assets/xash.png"
+import { ArrowLeft } from 'lucide-react';
 
-export const Register = ({ onSuccess }) => {
+export const Register = ({ onSuccess, onLoginClick }) => {
   const { register } = useAuth();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -40,6 +41,8 @@ export const Register = ({ onSuccess }) => {
 
     try {
       await register(formData);
+      // Store phone number for SetPassword component
+      localStorage.setItem('registration_phone', formData.phone);
       onSuccess?.(formData.phone);
     } catch (error) {
       setErrors({ submit: error.message });
@@ -50,10 +53,22 @@ export const Register = ({ onSuccess }) => {
 
   return (
     <Card className="max-w-md mx-auto">
-        <div className="flex items-center justify-center">
-            <img src={Logo} alt="logo" width={100} />
-        </div>
-      <h2 className="text-2xl font-bold text-white mb-6">Create Account</h2>
+      {/* Header with back button */}
+      <div className="flex items-center justify-between mb-4">
+        <button 
+          onClick={onLoginClick}
+          className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span className="text-sm">Back to Login</span>
+        </button>
+      </div>
+
+      <div className="flex items-center justify-center mb-6">
+        <img src={Logo} alt="logo" width={100} />
+      </div>
+      
+      <h2 className="text-2xl font-bold text-white mb-6 text-center">Create Account</h2>
       
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-2 gap-4">
@@ -122,9 +137,19 @@ export const Register = ({ onSuccess }) => {
           </div>
         )}
 
-        <Button type="submit" loading={loading} className="w-full">
+        <Button type="submit" loading={loading} className="w-full mb-4">
           Register
         </Button>
+
+        <div className="text-center">
+          <button 
+            type="button"
+            onClick={onLoginClick}
+            className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
+          >
+            Already have an account? Sign in
+          </button>
+        </div>
       </form>
     </Card>
   );

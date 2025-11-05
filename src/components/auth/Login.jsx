@@ -1,5 +1,5 @@
 // src/components/auth/Login.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
@@ -14,6 +14,17 @@ export const Login = ({ onSuccess, onRegisterClick, onForgotUserNumber }) => {
     user_number: '',
     password: ''
   });
+
+  // Load remembered credentials from localStorage
+  useEffect(() => {
+    const rememberedUserNumber = localStorage.getItem('remembered_user_number');
+    if (rememberedUserNumber) {
+      setFormData(prev => ({
+        ...prev,
+        user_number: rememberedUserNumber
+      }));
+    }
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -50,6 +61,8 @@ export const Login = ({ onSuccess, onRegisterClick, onForgotUserNumber }) => {
 
     try {
       await login(formData);
+      // Remember user number for future logins
+      localStorage.setItem('remembered_user_number', formData.user_number);
       onSuccess?.();
     } catch (error) {
       setErrors({ submit: error.message });
@@ -61,8 +74,8 @@ export const Login = ({ onSuccess, onRegisterClick, onForgotUserNumber }) => {
   return (
     <Card className="max-w-md mx-auto">
       <div className="text-center mb-2">
-        <div className="flex items-center justify-center">
-            <img src={Logo} alt="logo" width={100} />
+        <div className="flex items-center justify-center mb-4">
+          <img src={Logo} alt="logo" width={100} />
         </div>
         <p className="text-gray-400">Welcome back! Please sign in to your account.</p>
       </div>
