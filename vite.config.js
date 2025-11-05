@@ -24,4 +24,6 @@ export default defineConfig({
       },
     },
   },
+  
+  base: '/xash-app/', 
 })

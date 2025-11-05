@@ -1,5 +1,5 @@
 // src/App.jsx
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { Layout } from './components/layout/Layout';
 import { Register } from './components/auth/Register';
@@ -9,8 +9,8 @@ import { ResendUserNumber } from './components/auth/ResendUserNumber';
 import { History } from './pages/History';
 import { Commissions } from './pages/Commissions';
 import { Dashboard } from './pages/Dashboard';
-import { useState } from 'react';
 import { Profile } from './pages/Profile';
+import { useState } from 'react';
 
 const AppRoutes = () => {
   const { token, loading } = useAuth();
