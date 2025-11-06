@@ -21,18 +21,39 @@ export const AuthProvider = ({ children }) => {
   });
   const [loading, setLoading] = useState(true);
 
+  // Function to fetch user profile
+  const fetchUserProfile = async (authToken) => {
+    try {
+      const response = await api.request('/profile', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+      
+      if (response.success && response.data) {
+        setUser(response.data);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     const initializeAuth = async () => {
       if (token) {
         try {
-          // Verify token is still valid by making a simple API call
-          await api.request('/profile', {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          // Token is valid, continue
+          // Verify token is still valid and fetch user data
+          const userDataValid = await fetchUserProfile(token);
+          
+          if (!userDataValid) {
+            // Token is invalid or user data couldn't be fetched
+            throw new Error('Failed to fetch user data');
+          }
+          
           setLoading(false);
         } catch (error) {
           console.error('Token validation failed:', error);
@@ -72,6 +93,8 @@ export const AuthProvider = ({ children }) => {
       if (response.token) {
         setToken(response.token);
         localStorage.setItem('token', response.token);
+        // Fetch user profile after setting password
+        await fetchUserProfile(response.token);
       }
       
       return response;
@@ -101,6 +124,9 @@ export const AuthProvider = ({ children }) => {
       if (response.token) {
         setToken(response.token);
         localStorage.setItem('token', response.token);
+        
+        // IMPORTANT: Fetch user profile after login
+        await fetchUserProfile(response.token);
       }
       
       return response;

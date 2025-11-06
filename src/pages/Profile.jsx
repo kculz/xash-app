@@ -26,6 +26,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { api } from '../utils/api';
 import { useAuth } from '../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 export const Profile = () => {
   const { token, logout } = useAuth();
@@ -41,6 +42,7 @@ export const Profile = () => {
   const [profileData, setProfileData] = useState(null);
   const [walletData, setWalletData] = useState(null);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchProfileData();
@@ -304,7 +306,9 @@ export const Profile = () => {
     <div className="min-h-screen bg-gray-900 p-6">
       {/* Breadcrumb */}
       <nav className="flex items-center space-x-2 text-sm text-gray-400 mb-6">
-        <button className="flex items-center space-x-1 hover:text-white transition-colors duration-200">
+        <button
+          onClick={() => navigate('/')}
+          className="flex items-center space-x-1 hover:text-white transition-colors duration-200">
           <Home className="w-4 h-4" />
           <span>Dashboard</span>
         </button>

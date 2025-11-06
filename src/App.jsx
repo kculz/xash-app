@@ -15,13 +15,14 @@ import { Wallet } from './pages/Wallet';
 import { SidebarProvider } from './components/layout/Sidebar';
 
 const AppRoutes = () => {
-  const { token, loading } = useAuth();
+  const { token, user, loading } = useAuth();
   const [authFlow, setAuthFlow] = useState({
     step: 'login', // 'login', 'register', 'set-password', 'resend-user-number'
     phone: '',
     userNumber: ''
   });
 
+  // Show loading spinner while initializing auth state
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -30,54 +31,60 @@ const AppRoutes = () => {
     );
   }
 
-  if (!token) {
+  // Only show authenticated routes if we have BOTH token AND user data
+  if (token && user) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md">
-          {authFlow.step === 'login' && (
-            <Login 
-              onSuccess={() => window.location.reload()} 
-              onRegisterClick={() => setAuthFlow({ ...authFlow, step: 'register' })}
-              onForgotUserNumber={() => setAuthFlow({ ...authFlow, step: 'resend-user-number' })}
-            />
-          )}
-          
-          {authFlow.step === 'register' && (
-            <Register 
-              onSuccess={(phone) => setAuthFlow({ ...authFlow, step: 'set-password', phone })}
-              onLoginClick={() => setAuthFlow({ ...authFlow, step: 'login' })}
-            />
-          )}
-          
-          {authFlow.step === 'set-password' && (
-            <SetPassword 
-              onSuccess={() => setAuthFlow({ ...authFlow, step: 'login' })}
-              onBack={() => setAuthFlow({ ...authFlow, step: 'register' })}
-            />
-          )}
-
-          {authFlow.step === 'resend-user-number' && (
-            <ResendUserNumber 
-              onSuccess={() => setAuthFlow({ ...authFlow, step: 'login' })}
-              onBack={() => setAuthFlow({ ...authFlow, step: 'login' })}
-            />
-          )}
-        </div>
-      </div>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/history" element={<History />} />
+          <Route path="/commissions" element={<Commissions />} />
+          <Route path="/wallet" element={<Wallet />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Layout>
     );
   }
 
+  // Show auth flows if no token OR no user data
   return (
-    <Layout>
-     <Routes>
-      <Route path="/" element={<Dashboard />} />
-      <Route path="/history" element={<History />} />
-      <Route path="/commissions" element={<Commissions />} />
-      <Route path="/wallet" element={<Wallet />} />
-      <Route path="/profile" element={<Profile />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-    </Layout>
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md">
+        {authFlow.step === 'login' && (
+          <Login 
+            onSuccess={() => {
+              // Let the auth provider handle the state update
+              // Don't reload the page, let React re-render naturally
+            }} 
+            onRegisterClick={() => setAuthFlow({ ...authFlow, step: 'register' })}
+            onForgotUserNumber={() => setAuthFlow({ ...authFlow, step: 'resend-user-number' })}
+          />
+        )}
+        
+        {authFlow.step === 'register' && (
+          <Register 
+            onSuccess={(phone) => setAuthFlow({ ...authFlow, step: 'set-password', phone })}
+            onLoginClick={() => setAuthFlow({ ...authFlow, step: 'login' })}
+          />
+        )}
+        
+        {authFlow.step === 'set-password' && (
+          <SetPassword 
+            phone={authFlow.phone}
+            onSuccess={() => setAuthFlow({ ...authFlow, step: 'login' })}
+            onBack={() => setAuthFlow({ ...authFlow, step: 'register' })}
+          />
+        )}
+
+        {authFlow.step === 'resend-user-number' && (
+          <ResendUserNumber 
+            onSuccess={() => setAuthFlow({ ...authFlow, step: 'login' })}
+            onBack={() => setAuthFlow({ ...authFlow, step: 'login' })}
+          />
+        )}
+      </div>
+    </div>
   );
 };
 
