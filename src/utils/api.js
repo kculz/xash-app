@@ -122,7 +122,14 @@ export const api = {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.message || 'API request failed');
+        // Handle 401 Unauthorized specifically
+        if (response.status === 401) {
+          // Clear invalid token
+          localStorage.removeItem('token');
+          window.location.reload(); // Force re-authentication
+          throw new Error('Session expired. Please login again.');
+        }
+        throw new Error(data.message || `API request failed with status ${response.status}`);
       }
       
       return data;

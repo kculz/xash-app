@@ -2,15 +2,57 @@
 import { Button } from '../ui/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { User, LogOut } from 'lucide-react';
-import Logo from "../../assets/xash.png"
+import { User, LogOut, Building } from 'lucide-react';
+import Logo from "../../assets/xash.png";
 
 export const Header = () => {
   const { user, token, logout } = useAuth();
   const navigate = useNavigate();
-
+  
   // Show header navigation only if user is authenticated (has token)
   const isAuthenticated = !!token;
+
+  // Get display name: business name if available, otherwise first + last name
+  const getDisplayName = () => {
+    if (!user) return 'User';
+    
+    // Check if user has business name (direct property)
+    if (user.business_name?.trim()) {
+      return user.business_name.trim();
+    }
+    
+    // Check if user object has business object with business_name
+    if (user.business?.business_name?.trim()) {
+      return user.business.business_name.trim();
+    }
+    
+    // Use first and last name
+    const firstName = user.first_name?.trim() || '';
+    const lastName = user.last_name?.trim() || '';
+    
+    if (firstName && lastName) {
+      return `${firstName} ${lastName}`;
+    }
+    
+    if (firstName) {
+      return firstName;
+    }
+    
+    if (lastName) {
+      return lastName;
+    }
+    
+    return 'User';
+  };
+
+  // Check if user has a business name
+  const hasBusinessName = () => {
+    if (!user) return false;
+    const businessName = user.business_name || user.business?.business_name;
+    return !!(businessName?.trim());
+  };
+
+  const displayName = getDisplayName();
 
   return (
     <header className="bg-gray-800 border-b border-gray-700">
@@ -23,9 +65,14 @@ export const Header = () => {
           <div className="flex items-center space-x-4">
             {isAuthenticated && (
               <div className="flex items-center space-x-4">
-                <span className="text-gray-300 hidden md:block">
-                  Welcome, {user?.first_name || 'User'}
-                </span>
+                <div className="flex items-center space-x-2 text-gray-300">
+                  {hasBusinessName() && (
+                    <Building className="w-4 h-4 text-blue-400" />
+                  )}
+                  <span className="hidden md:block">
+                    Welcome, {displayName}
+                  </span>
+                </div>
                 
                 <Button 
                   variant="outline" 

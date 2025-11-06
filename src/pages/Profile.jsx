@@ -1,3 +1,4 @@
+// src/pages/Profile.jsx
 import { useState, useEffect } from 'react';
 import { 
   Home, 
@@ -17,18 +18,21 @@ import {
   Phone,
   CreditCard,
   Calendar,
-  Save
+  Save,
+  DollarSign,
+  Wallet as WalletIcon
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { api } from '../utils/api';
+import { useAuth } from '../hooks/useAuth';
 
-
-
-// Profile Component
 export const Profile = () => {
+  const { token, logout } = useAuth();
   const [apiKey, setApiKey] = useState('');
   const [loading, setLoading] = useState(false);
-  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [walletLoading, setWalletLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -36,10 +40,79 @@ export const Profile = () => {
   const [showApiKey, setShowApiKey] = useState(false);
   const [profileData, setProfileData] = useState(null);
   const [walletData, setWalletData] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Simulate fetching data
-    setTimeout(() => {
+    fetchProfileData();
+    fetchWalletData();
+  }, []);
+
+  const fetchProfileData = async () => {
+    try {
+      setProfileLoading(true);
+      setError(null);
+      
+      // Replace this with your actual profile API endpoint
+      const response = await api.request('/profile', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('Profile API Response:', response);
+      
+      if (response.success && response.data) {
+        setProfileData(response.data);
+        
+        // Generate initial API key if not provided by API
+        if (!response.data.api_key) {
+          const newKey = 'xash_live_' + Math.random().toString(36).substr(2, 32);
+          setApiKey(newKey);
+        } else {
+          setApiKey(response.data.api_key);
+        }
+      } else {
+        // Fallback to mock data if API fails
+        setProfileData({
+          first_name: 'John',
+          last_name: 'Doe',
+          email: 'john.doe@example.com',
+          phone: '+1 234 567 8900',
+          id_number: 'ID123456789',
+          dob: '1990-01-15',
+          user_number: 'USR001234',
+          business: {
+            business_name: 'Tech Solutions Inc',
+            business_category: 'technology',
+            bp_number: 'BP987654',
+            home_address: {
+              address_line_1: '123 Main Street',
+              address_line_2: 'Apt 4B',
+              city: 'New York'
+            },
+            business_address: {
+              business_address_line_1: '456 Business Ave',
+              business_address_line_2: 'Suite 100',
+              business_city: 'New York'
+            }
+          }
+        });
+        
+        // Generate initial API key
+        const newKey = 'xash_live_' + Math.random().toString(36).substr(2, 32);
+        setApiKey(newKey);
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile data:', error);
+      setError(error.message);
+      
+      // If it's an authentication error, logout
+      if (error.message.includes('Session expired') || error.message.includes('Unauthenticated')) {
+        logout();
+      }
+      
+      // Fallback to mock data
       setProfileData({
         first_name: 'John',
         last_name: 'Doe',
@@ -64,21 +137,62 @@ export const Profile = () => {
           }
         }
       });
-
-      setWalletData({
-        total_balance: 5420.50,
-        available_balance: 4320.50,
-        pending_balance: 1100.00,
-        currency: 'USD'
-      });
-
-      // Generate initial API key
+      
       const newKey = 'xash_live_' + Math.random().toString(36).substr(2, 32);
       setApiKey(newKey);
-
+    } finally {
       setProfileLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
+
+  const fetchWalletData = async () => {
+    try {
+      setWalletLoading(true);
+      const response = await api.request('/wallet', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('Profile Wallet API Response:', response);
+      
+      // Handle the actual API response structure - same as Wallet page
+      if (response.success && response.data && response.data.length > 0) {
+        const wallet = response.data[0];
+        setWalletData({
+          total_balance: parseFloat(wallet.value) || 0,
+          available_balance: parseFloat(wallet.value) - parseFloat(wallet.value_on_hold || 0) - parseFloat(wallet.value_pending || 0),
+          pending_balance: parseFloat(wallet.value_pending) || 0,
+          on_hold: parseFloat(wallet.value_on_hold) || 0,
+          currency: wallet.currency || 'USD',
+          rawData: wallet
+        });
+      } else {
+        // Set default values if no data
+        setWalletData({
+          total_balance: 0,
+          available_balance: 0,
+          pending_balance: 0,
+          on_hold: 0,
+          currency: 'USD',
+          rawData: null
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch wallet data:', error);
+      setWalletData({
+        total_balance: 0,
+        available_balance: 0,
+        pending_balance: 0,
+        on_hold: 0,
+        currency: 'USD',
+        rawData: null
+      });
+    } finally {
+      setWalletLoading(false);
+    }
+  };
 
   const handleRegenerateApiKey = async () => {
     if (!confirm('Are you sure you want to regenerate your API key? This will invalidate your current key immediately.')) {
@@ -88,7 +202,7 @@ export const Profile = () => {
     setRegenerating(true);
     
     try {
-      // Simulate API call
+      // Simulate API call to regenerate key
       await new Promise(resolve => setTimeout(resolve, 1500));
       const newApiKey = 'xash_live_' + Math.random().toString(36).substr(2, 32);
       setApiKey(newApiKey);
@@ -139,6 +253,27 @@ export const Profile = () => {
     setShowApiKey(!showApiKey);
   };
 
+  // Safe data access functions for wallet
+  const getTotalBalance = () => {
+    if (!walletData) return 0;
+    return walletData.total_balance || 0;
+  };
+
+  const getAvailableBalance = () => {
+    if (!walletData) return 0;
+    return walletData.available_balance || 0;
+  };
+
+  const getPendingBalance = () => {
+    if (!walletData) return 0;
+    return walletData.pending_balance || 0;
+  };
+
+  const getCurrency = () => {
+    if (!walletData) return 'USD';
+    return walletData.currency || 'USD';
+  };
+
   if (profileLoading) {
     return (
       <div className="min-h-screen bg-gray-900 p-6">
@@ -155,7 +290,11 @@ export const Profile = () => {
         <div className="text-center text-gray-400 py-12">
           <User className="w-16 h-16 mx-auto mb-4 text-gray-600" />
           <h3 className="text-lg font-semibold mb-2">Failed to Load Profile</h3>
-          <p className="mb-4">Unable to load profile information at this time.</p>
+          <p className="mb-4">{error || 'Unable to load profile information at this time.'}</p>
+          <Button onClick={fetchProfileData}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Try Again
+          </Button>
         </div>
       </div>
     );
@@ -417,27 +556,31 @@ export const Profile = () => {
           </Card>
 
           {/* Wallet Balance */}
-          {walletData && (
-            <Card className="p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <Key className="w-5 h-5 text-blue-400" />
-                <h2 className="text-xl font-bold text-white">Wallet Balance</h2>
-              </div>
+          <Card className="p-6">
+            <div className="flex items-center space-x-3 mb-6">
+              <WalletIcon className="w-5 h-5 text-blue-400" />
+              <h2 className="text-xl font-bold text-white">Wallet Balance</h2>
+            </div>
 
+            {walletLoading ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+              </div>
+            ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center p-4 bg-gray-900 rounded-lg border border-gray-700">
                     <h3 className="text-gray-400 text-sm mb-2">Total Balance</h3>
                     <p className="text-2xl font-bold text-white">
-                      ${walletData.total_balance.toFixed(2)}
+                      ${getTotalBalance().toFixed(2)}
                     </p>
-                    <p className="text-gray-400 text-sm mt-1">{walletData.currency}</p>
+                    <p className="text-gray-400 text-sm mt-1">{getCurrency()}</p>
                   </div>
 
                   <div className="text-center p-4 bg-gray-900 rounded-lg border border-gray-700">
                     <h3 className="text-gray-400 text-sm mb-2">Available</h3>
                     <p className="text-2xl font-bold text-green-400">
-                      ${walletData.available_balance.toFixed(2)}
+                      ${getAvailableBalance().toFixed(2)}
                     </p>
                     <p className="text-gray-400 text-sm mt-1">Ready to use</p>
                   </div>
@@ -446,13 +589,13 @@ export const Profile = () => {
                 <div className="text-center p-4 bg-gray-900 rounded-lg border border-gray-700">
                   <h3 className="text-gray-400 text-sm mb-2">Pending</h3>
                   <p className="text-2xl font-bold text-yellow-400">
-                    ${walletData.pending_balance.toFixed(2)}
+                    ${getPendingBalance().toFixed(2)}
                   </p>
                   <p className="text-gray-400 text-sm mt-1">In process</p>
                 </div>
               </div>
-            </Card>
-          )}
+            )}
+          </Card>
         </div>
       </div>
 

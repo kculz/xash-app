@@ -18,15 +18,18 @@ import {
   Search,
   MoreVertical
 } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 export const History = () => {
+  const { token, logout } = useAuth();
+  const navigate = useNavigate();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [currency, setCurrency] = useState('USD');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
-  const navigate = useNavigate();
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchHistory();
@@ -35,10 +38,29 @@ export const History = () => {
   const fetchHistory = async () => {
     try {
       setLoading(true);
-      const response = await api.request(`/reports/history/${currency}`);
-      setTransactions(response.data);
+      setError(null);
+      const response = await api.request(`/reports/history/${currency}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('History API Response:', response);
+      
+      if (response.success && response.data) {
+        setTransactions(response.data);
+      } else {
+        setTransactions([]);
+      }
     } catch (error) {
       console.error('Failed to fetch history:', error);
+      setError(error.message);
+      
+      // If it's an authentication error, logout
+      if (error.message.includes('Session expired') || error.message.includes('Unauthenticated')) {
+        logout();
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -60,6 +82,11 @@ export const History = () => {
         return ArrowRightLeft;
       case 'commission':
         return TrendingUp;
+      case 'direct_airtime':
+      case 'equal_voucher':
+      case 'voucher_refund':
+      case 'voucher':
+        return ArrowRightLeft;
       default:
         return ArrowRightLeft;
     }
@@ -70,7 +97,11 @@ export const History = () => {
       deposit: 'text-green-400',
       withdrawal: 'text-red-400',
       transfer: 'text-blue-400',
-      commission: 'text-violet-400'
+      commission: 'text-violet-400',
+      direct_airtime: 'text-orange-400',
+      equal_voucher: 'text-purple-400',
+      voucher_refund: 'text-yellow-400',
+      voucher: 'text-indigo-400'
     };
     return colors[type] || 'text-gray-400';
   };
@@ -80,7 +111,11 @@ export const History = () => {
       deposit: 'bg-green-500/20',
       withdrawal: 'bg-red-500/20',
       transfer: 'bg-blue-500/20',
-      commission: 'bg-violet-500/20'
+      commission: 'bg-violet-500/20',
+      direct_airtime: 'bg-orange-500/20',
+      equal_voucher: 'bg-purple-500/20',
+      voucher_refund: 'bg-yellow-500/20',
+      voucher: 'bg-indigo-500/20'
     };
     return colors[type] || 'bg-gray-500/20';
   };
@@ -90,19 +125,50 @@ export const History = () => {
       deposit: 'text-green-400',
       withdrawal: 'text-red-400',
       transfer: 'text-blue-400',
-      commission: 'text-violet-400'
+      commission: 'text-violet-400',
+      voucher_refund: 'text-green-400', // refunds are positive
+      direct_airtime: 'text-red-400',
+      equal_voucher: 'text-red-400',
+      voucher: 'text-red-400'
     };
     return colors[type] || 'text-white';
   };
 
   const getAmountPrefix = (type) => {
-    return type === 'deposit' || type === 'commission' ? '+' : '-';
+    // Refunds should show as positive amounts
+    if (type === 'deposit' || type === 'commission' || type === 'voucher_refund') {
+      return '+';
+    }
+    return '-';
+  };
+
+  // Helper function to safely format amount
+  const formatAmount = (amount) => {
+    if (typeof amount === 'string') {
+      return parseFloat(amount).toFixed(2);
+    }
+    if (typeof amount === 'number') {
+      return amount.toFixed(2);
+    }
+    return '0.00';
+  };
+
+  // Helper function to safely calculate total
+  const calculateTotal = (transactionType) => {
+    return transactions
+      .filter(t => t.type === transactionType)
+      .reduce((sum, t) => {
+        const amount = typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount;
+        return sum + (amount || 0);
+      }, 0)
+      .toFixed(2);
   };
 
   const filteredTransactions = transactions.filter(transaction => {
-    const matchesSearch = transaction.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transaction.amount.toString().includes(searchTerm) ||
-                         transaction.id.toString().includes(searchTerm);
+    const matchesSearch = transaction.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         transaction.amount?.toString().includes(searchTerm) ||
+                         transaction.id?.toString().includes(searchTerm) ||
+                         transaction.name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterType === 'all' || transaction.type === filterType;
     return matchesSearch && matchesFilter;
   });
@@ -112,7 +178,10 @@ export const History = () => {
     { value: 'deposit', label: 'Deposits' },
     { value: 'withdrawal', label: 'Withdrawals' },
     { value: 'transfer', label: 'Transfers' },
-    { value: 'commission', label: 'Commissions' }
+    { value: 'commission', label: 'Commissions' },
+    { value: 'direct_airtime', label: 'Airtime' },
+    { value: 'voucher', label: 'Vouchers' },
+    { value: 'voucher_refund', label: 'Refunds' }
   ];
 
   if (loading) {
@@ -129,6 +198,22 @@ export const History = () => {
         
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-900 p-6">
+        <div className="text-center text-gray-400 py-12">
+          <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-600" />
+          <h3 className="text-lg font-semibold mb-2">Unable to Load History</h3>
+          <p className="mb-4">{error}</p>
+          <Button onClick={handleRefresh}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Try Again
+          </Button>
         </div>
       </div>
     );
@@ -187,10 +272,7 @@ export const History = () => {
           </div>
           <h3 className="text-gray-400 text-sm mb-1">Total Deposits</h3>
           <p className="text-xl font-bold text-white">
-            ${transactions
-              .filter(t => t.type === 'deposit')
-              .reduce((sum, t) => sum + t.amount, 0)
-              .toFixed(2)}
+            ${calculateTotal('deposit')}
           </p>
         </Card>
 
@@ -200,10 +282,7 @@ export const History = () => {
           </div>
           <h3 className="text-gray-400 text-sm mb-1">Total Withdrawals</h3>
           <p className="text-xl font-bold text-white">
-            ${transactions
-              .filter(t => t.type === 'withdrawal')
-              .reduce((sum, t) => sum + t.amount, 0)
-              .toFixed(2)}
+            ${calculateTotal('withdrawal')}
           </p>
         </Card>
 
@@ -213,10 +292,7 @@ export const History = () => {
           </div>
           <h3 className="text-gray-400 text-sm mb-1">Total Commissions</h3>
           <p className="text-xl font-bold text-white">
-            ${transactions
-              .filter(t => t.type === 'commission')
-              .reduce((sum, t) => sum + t.amount, 0)
-              .toFixed(2)}
+            ${calculateTotal('commission')}
           </p>
         </Card>
 
@@ -286,7 +362,7 @@ export const History = () => {
           </div>
           
           <div className="flex items-center space-x-4 text-sm">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 flex-wrap gap-2">
               <div className="flex items-center space-x-1">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                 <span className="text-gray-400">Deposit</span>
@@ -311,6 +387,8 @@ export const History = () => {
         <div className="space-y-3">
           {filteredTransactions.map((transaction) => {
             const TransactionIcon = getTransactionIcon(transaction.type);
+            const displayName = transaction.name || transaction.type;
+            
             return (
               <div
                 key={transaction.id}
@@ -321,8 +399,8 @@ export const History = () => {
                     <TransactionIcon className={`w-5 h-5 ${getTypeColor(transaction.type)}`} />
                   </div>
                   <div>
-                    <p className="text-white font-medium capitalize group-hover:text-blue-300 transition-colors">
-                      {transaction.type}
+                    <p className="text-white font-medium group-hover:text-blue-300 transition-colors">
+                      {displayName}
                     </p>
                     <div className="flex items-center space-x-2 text-gray-400 text-sm">
                       <Calendar className="w-3 h-3" />
@@ -342,7 +420,7 @@ export const History = () => {
                 <div className="flex items-center space-x-4">
                   <div className="text-right">
                     <p className={`text-lg font-semibold ${getAmountColor(transaction.type)}`}>
-                      {getAmountPrefix(transaction.type)}${transaction.amount.toFixed(2)}
+                      {getAmountPrefix(transaction.type)}${formatAmount(transaction.amount)}
                     </p>
                     <p className="text-gray-400 text-sm">{transaction.currency}</p>
                   </div>
@@ -392,8 +470,6 @@ export const History = () => {
           </div>
         )}
       </Card>
-
-      
     </div>
   );
 };

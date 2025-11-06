@@ -14,16 +14,40 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(() => {
+    // Get token from localStorage, but validate it
+    const storedToken = localStorage.getItem('token');
+    return storedToken || null;
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (token) {
-      // Verify token and get user info
-      setLoading(false);
-    } else {
-      setLoading(false);
-    }
+    const initializeAuth = async () => {
+      if (token) {
+        try {
+          // Verify token is still valid by making a simple API call
+          await api.request('/profile', {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          // Token is valid, continue
+          setLoading(false);
+        } catch (error) {
+          console.error('Token validation failed:', error);
+          // Token is invalid, clear it
+          setToken(null);
+          setUser(null);
+          localStorage.removeItem('token');
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
   }, [token]);
 
   const register = async (userData) => {
