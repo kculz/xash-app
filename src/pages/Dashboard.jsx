@@ -18,6 +18,27 @@ export const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+    useEffect(() => {
+  const fetchWalletData = async () => {
+    try {
+      const response = await api.request('/wallet', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      // Use the real wallet data instead of hardcoded values
+      setWalletData(response.data);
+    } catch (error) {
+      console.error('Failed to fetch wallet data:', error);
+    }
+  };
+
+  if (token && !USE_DUMMY_DATA) {
+    fetchWalletData();
+  }
+}, [token]);
+
   const quickActions = [
     {
       title: 'Transaction History',
@@ -64,6 +85,8 @@ export const Dashboard = () => {
       bgColor: 'bg-violet-500/20'
     },
   ];
+
+
 
   const getStatusIcon = (status) => {
     return status === 'completed' ? CheckCircle2 : Clock;

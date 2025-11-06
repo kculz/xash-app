@@ -13,6 +13,61 @@ const generateDummyUser = () => ({
   user_number: Math.floor(100000 + Math.random() * 900000)
 });
 
+const generateDummyProfile = () => ({
+  success: true,
+  message: "Profile fetched successfully.",
+  data: {
+    first_name: 'John',
+    last_name: 'Doe',
+    dob: '2000-01-01',
+    phone: '263775123456',
+    email: 'john.doe@example.com',
+    id_number: '71-123456X55',
+    user_number: 123456,
+    business: {
+      id: 1,
+      business_name: 'Xash Technologies',
+      business_category: 'IT',
+      bp_number: 'BP12345678',
+      home_address: {
+        address_line_1: '123 Main St',
+        address_line_2: null,
+        city: 'Mutare'
+      },
+      business_address: {
+        business_address_line_1: '456 Business Ave',
+        business_address_line_2: null,
+        business_city: 'Mutare'
+      }
+    }
+  }
+});
+
+const generateDummyWallet = () => ({
+  success: true,
+  message: "Wallet balance retrieved successfully",
+  data: {
+    total_balance: 1250.50,
+    available_balance: 900.25,
+    pending_balance: 350.25,
+    currency: 'USD',
+    accounts: [
+      {
+        currency: 'USD',
+        balance: 1250.50,
+        available: 900.25,
+        pending: 350.25
+      },
+      {
+        currency: 'ZWL',
+        balance: 0.00,
+        available: 0.00,
+        pending: 0.00
+      }
+    ]
+  }
+});
+
 const generateDummyHistory = (currency) => ({
   success: true,
   message: "Transactions retrieved successfully",
@@ -124,6 +179,12 @@ export const api = {
           success: true,
           message: "Logout successful."
         };
+
+      case '/profile':
+        return generateDummyProfile();
+
+      case '/wallet':
+        return generateDummyWallet();
 
       case '/reports/history/USD':
         return generateDummyHistory('USD');
