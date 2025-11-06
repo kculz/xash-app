@@ -1,7 +1,9 @@
 // src/pages/Dashboard.jsx
+import { useState, useEffect } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../hooks/useAuth';
+import { api } from '../utils/api';
 import { useNavigate } from 'react-router-dom';
 import { 
   BarChart3, 
@@ -15,29 +17,34 @@ import {
 } from 'lucide-react';
 
 export const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
+  const [walletData, setWalletData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-  const fetchWalletData = async () => {
-    try {
-      const response = await api.request('/wallet', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      // Use the real wallet data instead of hardcoded values
-      setWalletData(response.data);
-    } catch (error) {
-      console.error('Failed to fetch wallet data:', error);
+  useEffect(() => {
+    const fetchWalletData = async () => {
+      try {
+        const response = await api.request('/wallet', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        setWalletData(response.data);
+      } catch (error) {
+        console.error('Failed to fetch wallet data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (token) {
+      fetchWalletData();
+    } else {
+      setLoading(false);
     }
-  };
-
-  if (token && !USE_DUMMY_DATA) {
-    fetchWalletData();
-  }
-}, [token]);
+  }, [token]);
 
   const quickActions = [
     {
@@ -53,6 +60,13 @@ export const Dashboard = () => {
       icon: DollarSign,
       path: '/commissions',
       color: 'bg-violet-600'
+    },
+    {
+      title: 'Wallet',
+      description: 'Manage your balances and funds',
+      icon: DollarSign,
+      path: '/wallet',
+      color: 'bg-green-600'
     },
   ];
 
@@ -86,8 +100,6 @@ export const Dashboard = () => {
     },
   ];
 
-
-
   const getStatusIcon = (status) => {
     return status === 'completed' ? CheckCircle2 : Clock;
   };
@@ -95,6 +107,14 @@ export const Dashboard = () => {
   const getStatusColor = (status) => {
     return status === 'completed' ? 'text-green-400' : 'text-yellow-400';
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -114,8 +134,12 @@ export const Dashboard = () => {
             </div>
           </div>
           <h3 className="text-gray-400 text-sm mb-2">Total Balance</h3>
-          <p className="text-2xl font-bold text-white">$1,250.00</p>
-          <p className="text-sm text-gray-400 mt-1">USD</p>
+          <p className="text-2xl font-bold text-white">
+            ${walletData ? walletData.total_balance.toFixed(2) : '0.00'}
+          </p>
+          <p className="text-sm text-gray-400 mt-1">
+            {walletData ? walletData.currency : 'USD'}
+          </p>
         </Card>
 
         <Card className="text-center p-6">
@@ -125,7 +149,9 @@ export const Dashboard = () => {
             </div>
           </div>
           <h3 className="text-gray-400 text-sm mb-2">Available</h3>
-          <p className="text-2xl font-bold text-green-400">$900.00</p>
+          <p className="text-2xl font-bold text-green-400">
+            ${walletData ? walletData.available_balance.toFixed(2) : '0.00'}
+          </p>
           <p className="text-sm text-gray-400 mt-1">Ready to use</p>
         </Card>
 
@@ -136,13 +162,15 @@ export const Dashboard = () => {
             </div>
           </div>
           <h3 className="text-gray-400 text-sm mb-2">Pending</h3>
-          <p className="text-2xl font-bold text-yellow-400">$350.00</p>
+          <p className="text-2xl font-bold text-yellow-400">
+            ${walletData ? walletData.pending_balance.toFixed(2) : '0.00'}
+          </p>
           <p className="text-sm text-gray-400 mt-1">In process</p>
         </Card>
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {quickActions.map((action, index) => {
           const IconComponent = action.icon;
           return (
@@ -261,7 +289,11 @@ export const Dashboard = () => {
           <p className="text-gray-400 text-sm mb-4">
             Send money to other Xash users instantly
           </p>
-          <Button variant="primary" className="w-full">
+          <Button 
+            variant="primary" 
+            className="w-full"
+            onClick={() => navigate('/wallet')}
+          >
             Make a Transfer
           </Button>
         </Card>

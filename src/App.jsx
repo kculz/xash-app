@@ -11,6 +11,8 @@ import { Commissions } from './pages/Commissions';
 import { Dashboard } from './pages/Dashboard';
 import { Profile } from './pages/Profile';
 import { useState } from 'react';
+import { Wallet } from './pages/Wallet';
+import { SidebarProvider } from './components/layout/Sidebar';
 
 const AppRoutes = () => {
   const { token, loading } = useAuth();
@@ -67,13 +69,14 @@ const AppRoutes = () => {
 
   return (
     <Layout>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/history" element={<History />} />
-        <Route path="/commissions" element={<Commissions />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+     <Routes>
+      <Route path="/" element={<Dashboard />} />
+      <Route path="/history" element={<History />} />
+      <Route path="/commissions" element={<Commissions />} />
+      <Route path="/wallet" element={<Wallet />} />
+      <Route path="/profile" element={<Profile />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
     </Layout>
   );
 };
@@ -81,9 +84,11 @@ const AppRoutes = () => {
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <SidebarProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </SidebarProvider>
     </Router>
   );
 }
