@@ -40,6 +40,11 @@ export const Profile = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  const [regenerating, setRegenerating] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
   // Use the user data from useAuth hook (already fetched during login)
   const profileData = user;
 
@@ -157,13 +162,34 @@ export const Profile = () => {
     return walletData.currency || 'USD';
   };
 
-  // Add this function to your Profile component
-  const handleRefreshToken = async () => {
+
+  const handleRegenerateToken = async () => {
+    setShowPasswordModal(true);
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!password.trim()) {
+      setPasswordError('Password is required');
+      return;
+    }
+
+    setRegenerating(true);
+    setPasswordError('');
+
     try {
-      const response = await api.request('/auth/refresh', {
-        method: 'POST'
+      // Use the user's user_number from profile data and the provided password
+      const credentials = {
+        user_number: profileData.user_number,
+        password: password
+      };
+
+      const response = await api.request('/auth/login', {
+        method: 'POST',
+        body: credentials
       });
-      
+
       if (response.success && response.token) {
         // Update the API key with the new token
         setApiKey(response.token);
@@ -172,11 +198,23 @@ export const Profile = () => {
         // Show success message
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
+        
+        // Close modal and reset password
+        setShowPasswordModal(false);
+        setPassword('');
       }
     } catch (error) {
-      console.error('Failed to refresh token:', error);
-      alert('Failed to refresh token. Please try again.');
+      console.error('Failed to regenerate token:', error);
+      setPasswordError(error.message || 'Failed to regenerate token. Please check your password.');
+    } finally {
+      setRegenerating(false);
     }
+  };
+
+  const handleCancelRegenerate = () => {
+    setShowPasswordModal(false);
+    setPassword('');
+    setPasswordError('');
   };
 
   if (!profileData) {
@@ -431,17 +469,17 @@ export const Profile = () => {
                 <div className="flex items-start space-x-3">
                   <RefreshCw className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <h3 className="text-blue-400 font-semibold mb-1">Refresh API Key</h3>
+                    <h3 className="text-blue-400 font-semibold mb-1">Generate New API Key</h3>
                     <p className="text-blue-300 text-sm mb-3">
-                      Generate a new API key (JWT token). This will invalidate your current token and issue a new one.
+                      Generate a new API key (JWT token). This will invalidate your current token and issue a new one. You will need to enter your password.
                     </p>
                     <Button
-                      onClick={handleRefreshToken}
+                      onClick={handleRegenerateToken}
                       variant="outline"
                       className="w-full border-blue-500 text-blue-400 hover:bg-blue-500/20"
                     >
                       <RefreshCw className="w-4 h-4 mr-2" />
-                      Refresh API Key
+                      Generate New API Key
                     </Button>
                   </div>
                 </div>
@@ -542,6 +580,65 @@ export const Profile = () => {
           </div>
         </div>
       </Card>
+
+
+      {/* Password Confirmation Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <Card className="max-w-md w-full p-6">
+            <div className="flex items-center space-x-3 mb-6">
+              <Shield className="w-6 h-6 text-blue-400" />
+              <h2 className="text-xl font-bold text-white">Confirm Password</h2>
+            </div>
+            
+            <p className="text-gray-300 mb-4">
+              Please enter your password to generate a new API key. This will invalidate your current token.
+            </p>
+            
+            <form onSubmit={handlePasswordSubmit}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (passwordError) setPasswordError('');
+                  }}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter your password"
+                  autoFocus
+                />
+                {passwordError && (
+                  <p className="text-red-400 text-sm mt-1">{passwordError}</p>
+                )}
+              </div>
+              
+              <div className="flex space-x-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancelRegenerate}
+                  className="flex-1"
+                  disabled={regenerating}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  loading={regenerating}
+                  className="flex-1"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Generate New Token
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
