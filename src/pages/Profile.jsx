@@ -29,123 +29,29 @@ import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 
 export const Profile = () => {
-  const { token, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const [apiKey, setApiKey] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [profileLoading, setProfileLoading] = useState(true);
   const [walletLoading, setWalletLoading] = useState(true);
-  const [regenerating, setRegenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
-  const [profileData, setProfileData] = useState(null);
   const [walletData, setWalletData] = useState(null);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchProfileData();
-    fetchWalletData();
-  }, []);
+  // Use the user data from useAuth hook (already fetched during login)
+  const profileData = user;
 
-  const fetchProfileData = async () => {
-    try {
-      setProfileLoading(true);
-      setError(null);
-      
-      // Replace this with your actual profile API endpoint
-      const response = await api.request('/profile', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      console.log('Profile API Response:', response);
-      
-      if (response.success && response.data) {
-        setProfileData(response.data);
-        
-        // Generate initial API key if not provided by API
-        if (!response.data.api_key) {
-          const newKey = 'xash_live_' + Math.random().toString(36).substr(2, 32);
-          setApiKey(newKey);
-        } else {
-          setApiKey(response.data.api_key);
-        }
-      } else {
-        // Fallback to mock data if API fails
-        setProfileData({
-          first_name: 'John',
-          last_name: 'Doe',
-          email: 'john.doe@example.com',
-          phone: '+1 234 567 8900',
-          id_number: 'ID123456789',
-          dob: '1990-01-15',
-          user_number: 'USR001234',
-          business: {
-            business_name: 'Tech Solutions Inc',
-            business_category: 'technology',
-            bp_number: 'BP987654',
-            home_address: {
-              address_line_1: '123 Main Street',
-              address_line_2: 'Apt 4B',
-              city: 'New York'
-            },
-            business_address: {
-              business_address_line_1: '456 Business Ave',
-              business_address_line_2: 'Suite 100',
-              business_city: 'New York'
-            }
-          }
-        });
-        
-        // Generate initial API key
-        const newKey = 'xash_live_' + Math.random().toString(36).substr(2, 32);
-        setApiKey(newKey);
-      }
-    } catch (error) {
-      console.error('Failed to fetch profile data:', error);
-      setError(error.message);
-      
-      // If it's an authentication error, logout
-      if (error.message.includes('Session expired') || error.message.includes('Unauthenticated')) {
-        logout();
-      }
-      
-      // Fallback to mock data
-      setProfileData({
-        first_name: 'John',
-        last_name: 'Doe',
-        email: 'john.doe@example.com',
-        phone: '+1 234 567 8900',
-        id_number: 'ID123456789',
-        dob: '1990-01-15',
-        user_number: 'USR001234',
-        business: {
-          business_name: 'Tech Solutions Inc',
-          business_category: 'technology',
-          bp_number: 'BP987654',
-          home_address: {
-            address_line_1: '123 Main Street',
-            address_line_2: 'Apt 4B',
-            city: 'New York'
-          },
-          business_address: {
-            business_address_line_1: '456 Business Ave',
-            business_address_line_2: 'Suite 100',
-            business_city: 'New York'
-          }
-        }
-      });
-      
-      const newKey = 'xash_live_' + Math.random().toString(36).substr(2, 32);
-      setApiKey(newKey);
-    } finally {
-      setProfileLoading(false);
+  useEffect(() => {
+    // Set the token from localStorage as the API key
+    const storedToken = localStorage.getItem('token');
+    if (storedToken) {
+      setApiKey(storedToken);
     }
-  };
+    
+    fetchWalletData();
+  }, [profileData]);
 
   const fetchWalletData = async () => {
     try {
@@ -193,31 +99,6 @@ export const Profile = () => {
       });
     } finally {
       setWalletLoading(false);
-    }
-  };
-
-  const handleRegenerateApiKey = async () => {
-    if (!confirm('Are you sure you want to regenerate your API key? This will invalidate your current key immediately.')) {
-      return;
-    }
-
-    setRegenerating(true);
-    
-    try {
-      // Simulate API call to regenerate key
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      const newApiKey = 'xash_live_' + Math.random().toString(36).substr(2, 32);
-      setApiKey(newApiKey);
-      setCopied(false);
-      
-      // Show saved notification
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch (error) {
-      console.error('Failed to regenerate API key:', error);
-      alert('Failed to regenerate API key. Please try again.');
-    } finally {
-      setRegenerating(false);
     }
   };
 
@@ -276,15 +157,27 @@ export const Profile = () => {
     return walletData.currency || 'USD';
   };
 
-  if (profileLoading) {
-    return (
-      <div className="min-h-screen bg-gray-900 p-6">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-        </div>
-      </div>
-    );
-  }
+  // Add this function to your Profile component
+  const handleRefreshToken = async () => {
+    try {
+      const response = await api.request('/auth/refresh', {
+        method: 'POST'
+      });
+      
+      if (response.success && response.token) {
+        // Update the API key with the new token
+        setApiKey(response.token);
+        localStorage.setItem('token', response.token);
+        
+        // Show success message
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      }
+    } catch (error) {
+      console.error('Failed to refresh token:', error);
+      alert('Failed to refresh token. Please try again.');
+    }
+  };
 
   if (!profileData) {
     return (
@@ -293,7 +186,7 @@ export const Profile = () => {
           <User className="w-16 h-16 mx-auto mb-4 text-gray-600" />
           <h3 className="text-lg font-semibold mb-2">Failed to Load Profile</h3>
           <p className="mb-4">{error || 'Unable to load profile information at this time.'}</p>
-          <Button onClick={fetchProfileData}>
+          <Button onClick={() => window.location.reload()}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Try Again
           </Button>
@@ -435,9 +328,9 @@ export const Profile = () => {
                   <div className="flex items-center space-x-2 p-3 bg-gray-900 rounded-lg border border-gray-700">
                     <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
                     <span className="text-white">
-                      {profileData.business.home_address.address_line_1}
-                      {profileData.business.home_address.address_line_2 && `, ${profileData.business.home_address.address_line_2}`}
-                      {`, ${profileData.business.home_address.city}`}
+                      {profileData.business.home_address?.address_line_1}
+                      {profileData.business.home_address?.address_line_2 && `, ${profileData.business.home_address.address_line_2}`}
+                      {profileData.business.home_address?.city && `, ${profileData.business.home_address.city}`}
                     </span>
                   </div>
                 </div>
@@ -447,9 +340,9 @@ export const Profile = () => {
                   <div className="flex items-center space-x-2 p-3 bg-gray-900 rounded-lg border border-gray-700">
                     <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
                     <span className="text-white">
-                      {profileData.business.business_address.business_address_line_1}
-                      {profileData.business.business_address.business_address_line_2 && `, ${profileData.business.business_address.business_address_line_2}`}
-                      {`, ${profileData.business.business_address.business_city}`}
+                      {profileData.business.business_address?.business_address_line_1}
+                      {profileData.business.business_address?.business_address_line_2 && `, ${profileData.business.business_address.business_address_line_2}`}
+                      {profileData.business.business_address?.business_city && `, ${profileData.business.business_address.business_city}`}
                     </span>
                   </div>
                 </div>
@@ -471,7 +364,7 @@ export const Profile = () => {
               {/* Current API Key */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Your API Key
+                  Your API Key (JWT Token)
                 </label>
                 <div className="relative">
                   <input
@@ -533,28 +426,41 @@ export const Profile = () => {
                 Save API Key
               </Button>
 
-              {/* Regenerate API Key */}
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+              {/* Refresh Token Section */}
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
                 <div className="flex items-start space-x-3">
-                  <AlertTriangle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+                  <RefreshCw className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <h3 className="text-yellow-400 font-semibold mb-1">Regenerate API Key</h3>
-                    <p className="text-yellow-300 text-sm">
-                      Generating a new API key will immediately invalidate your current key. 
-                      Any applications using the current key will need to be updated.
+                    <h3 className="text-blue-400 font-semibold mb-1">Refresh API Key</h3>
+                    <p className="text-blue-300 text-sm mb-3">
+                      Generate a new API key (JWT token). This will invalidate your current token and issue a new one.
                     </p>
+                    <Button
+                      onClick={handleRefreshToken}
+                      variant="outline"
+                      className="w-full border-blue-500 text-blue-400 hover:bg-blue-500/20"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Refresh API Key
+                    </Button>
                   </div>
                 </div>
-                
-                <Button
-                  variant="outline"
-                  onClick={handleRegenerateApiKey}
-                  loading={regenerating}
-                  className="w-full mt-4 border-yellow-500 text-yellow-400 hover:bg-yellow-500/20"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Regenerate API Key
-                </Button>
+              </div>
+
+              {/* API Key Usage Information */}
+              <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <Key className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="text-green-400 font-semibold mb-1">How to Use Your API Key</h3>
+                    <p className="text-green-300 text-sm mb-2">
+                      Use this JWT token in the Authorization header for API requests:
+                    </p>
+                    <code className="block p-2 bg-gray-800 rounded text-xs text-gray-300 font-mono">
+                      Authorization: Bearer {apiKey.substring(0, 20)}...
+                    </code>
+                  </div>
+                </div>
               </div>
             </div>
           </Card>

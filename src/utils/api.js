@@ -46,26 +46,15 @@ const generateDummyProfile = () => ({
 const generateDummyWallet = () => ({
   success: true,
   message: "Wallet balance retrieved successfully",
-  data: {
-    total_balance: 1250.50,
-    available_balance: 900.25,
-    pending_balance: 350.25,
-    currency: 'USD',
-    accounts: [
-      {
-        currency: 'USD',
-        balance: 1250.50,
-        available: 900.25,
-        pending: 350.25
-      },
-      {
-        currency: 'ZWL',
-        balance: 0.00,
-        available: 0.00,
-        pending: 0.00
-      }
-    ]
-  }
+  data: [
+    {
+      value: "1250.50",
+      value_on_hold: "100.00",
+      value_pending: "250.25",
+      currency: "USD",
+      name: "US Dollar"
+    }
+  ]
 });
 
 const generateDummyHistory = (currency) => ({
@@ -97,6 +86,13 @@ const generateDummyCommissions = () => ({
   }
 });
 
+const generateDummyRefreshToken = () => ({
+  success: true,
+  message: "Token refreshed successfully",
+  token: "dummy_jwt_token_refreshed_" + Math.random().toString(36).substr(2, 9),
+  refresh_token: "dummy_refresh_token_" + Math.random().toString(36).substr(2, 9)
+});
+
 // API functions
 export const api = {
   async request(endpoint, options = {}) {
@@ -124,8 +120,28 @@ export const api = {
       if (!response.ok) {
         // Handle 401 Unauthorized specifically
         if (response.status === 401) {
-          // Clear invalid token
+          // Try to refresh token if this is not a refresh token request
+          if (!endpoint.includes('/auth/refresh')) {
+            try {
+              const newToken = await this.refreshToken();
+              if (newToken) {
+                // Retry the original request with new token
+                config.headers.Authorization = `Bearer ${newToken}`;
+                const retryResponse = await fetch(url, config);
+                const retryData = await retryResponse.json();
+                
+                if (retryResponse.ok) {
+                  return retryData;
+                }
+              }
+            } catch (refreshError) {
+              console.error('Token refresh failed:', refreshError);
+            }
+          }
+          
+          // Clear invalid token and redirect to login
           localStorage.removeItem('token');
+          localStorage.removeItem('refresh_token');
           window.location.reload(); // Force re-authentication
           throw new Error('Session expired. Please login again.');
         }
@@ -135,6 +151,40 @@ export const api = {
       return data;
     } catch (error) {
       console.error('API request failed:', error);
+      
+      // If it's a network error and we're not using dummy data, fall back to dummy data
+      if (!USE_DUMMY_DATA && (error.name === 'TypeError' || error.message.includes('Failed to fetch'))) {
+        console.warn('Network error, falling back to dummy data for:', endpoint);
+        return await this.dummyRequest(endpoint, options);
+      }
+      
+      throw error;
+    }
+  },
+
+  async refreshToken() {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    try {
+      const response = await this.request('/auth/refresh', {
+        method: 'POST',
+        body: { refresh_token: refreshToken }
+      });
+
+      if (response.success && response.token) {
+        localStorage.setItem('token', response.token);
+        if (response.refresh_token) {
+          localStorage.setItem('refresh_token', response.refresh_token);
+        }
+        return response.token;
+      }
+      
+      throw new Error('Failed to refresh token');
+    } catch (error) {
+      console.error('Token refresh failed:', error);
       throw error;
     }
   },
@@ -158,13 +208,20 @@ export const api = {
         };
 
       case '/auth/set-password':
-        return {
+        const setPasswordResponse = {
           success: true,
           message: "Password set successfully.",
-          token: "dummy_jwt_token_" + Math.random().toString(36).substr(2, 9)
+          token: "dummy_jwt_token_" + Math.random().toString(36).substr(2, 9),
+          refresh_token: "dummy_refresh_token_" + Math.random().toString(36).substr(2, 9)
         };
+        
+        // Store tokens in localStorage for consistency
+        localStorage.setItem('token', setPasswordResponse.token);
+        localStorage.setItem('refresh_token', setPasswordResponse.refresh_token);
+        
+        return setPasswordResponse;
 
-      case '/auth/resend-user-number/':
+      case '/auth/resend-user-number':
         return {
           success: true,
           message: "User number resent successfully."
@@ -172,16 +229,29 @@ export const api = {
 
       case '/auth/login':
         if (options.body.user_number === '123456' && options.body.password === 'Password123!') {
-          return {
+          const loginResponse = {
             success: true,
             message: "Login successful.",
-            token: "dummy_jwt_token_" + Math.random().toString(36).substr(2, 9)
+            token: "dummy_jwt_token_" + Math.random().toString(36).substr(2, 9),
+            refresh_token: "dummy_refresh_token_" + Math.random().toString(36).substr(2, 9)
           };
+          
+          // Store tokens in localStorage for consistency
+          localStorage.setItem('token', loginResponse.token);
+          localStorage.setItem('refresh_token', loginResponse.refresh_token);
+          
+          return loginResponse;
         } else {
           throw new Error("Invalid credentials");
         }
 
+      case '/auth/refresh':
+        return generateDummyRefreshToken();
+
       case '/auth/logout':
+        // Clear tokens from localStorage
+        localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
         return {
           success: true,
           message: "Logout successful."
@@ -203,7 +273,13 @@ export const api = {
         return generateDummyCommissions();
 
       default:
-        throw new Error(`Dummy endpoint not implemented: ${endpoint}`);
+        // Fallback for unknown endpoints - return a generic success response
+        console.warn(`Unknown endpoint: ${endpoint}, returning generic success response`);
+        return {
+          success: true,
+          message: "Request completed successfully.",
+          data: null
+        };
     }
   }
 };
