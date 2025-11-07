@@ -476,10 +476,10 @@ export const Profile = () => {
                     <Button
                       onClick={handleRegenerateToken}
                       variant="outline"
-                      className="w-full border-blue-500 text-blue-400 hover:bg-blue-500/20"
+                      className="w-full border-blue-500 text-blue-400 hover:bg-blue-500/20 flex items-center justify-center flex-1"
                     >
                       <RefreshCw className="w-4 h-4 mr-2" />
-                      Generate New API Key
+                      <p>Generate New API Key</p>
                     </Button>
                   </div>
                 </div>
@@ -629,10 +629,10 @@ export const Profile = () => {
                 <Button
                   type="submit"
                   loading={regenerating}
-                  className="flex-1"
+                  className="flex items-center justify-center flex-1"
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
-                  Generate New Token
+                  <p>Generate</p>
                 </Button>
               </div>
             </form>
