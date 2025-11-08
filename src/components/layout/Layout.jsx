@@ -32,6 +32,14 @@ export const Layout = ({ children }) => {
               <span className="text-sm">
                 {currentYear} Xash Solutions. All rights reserved.
               </span>
+              <span className="text-gray-500">|</span>
+              <a 
+                href="https://vdocs.xash.co.zw/" 
+                target="_blank"
+                className="text-sm text-gray-400 hover:text-gray-300 transition-colors"
+              >
+                Documentation
+              </a>
             </div>
           </div>
         </footer>

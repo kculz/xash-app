@@ -485,6 +485,66 @@ export const Profile = () => {
                 </div>
               </div>
 
+
+                            {/* Base URL Information */}
+              <div className="bg-violet-500/10 border border-violet-500/20 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <Building className="w-5 h-5 text-violet-400 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="text-violet-400 font-semibold mb-1">API Base URL</h3>
+                    <p className="text-violet-300 text-sm mb-2">
+                      Use this base URL for all API requests:
+                    </p>
+                    <div className="flex items-center space-x-2">
+                      <code className="flex-1 p-2 bg-gray-800 rounded text-xs text-gray-300 font-mono">
+                        https://dev.xash.co.zw/api/v1/
+                      </code>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText('https://dev.xash.co.zw/api/v1/');
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                          } catch (error) {
+                            console.error('Failed to copy:', error);
+                          }
+                        }}
+                        className="p-2 rounded border border-violet-500/30 hover:bg-violet-500/20 transition-colors"
+                        title="Copy base URL"
+                      >
+                        {copied ? (
+                          <CheckCircle2 className="w-4 h-4 text-green-400" />
+                        ) : (
+                          <Copy className="w-4 h-4 text-violet-300" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+               {/* API Documentation */}
+              <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <AlertTriangle className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="text-orange-400 font-semibold mb-1">API Documentation</h3>
+                    <p className="text-orange-300 text-sm mb-3">
+                      Learn how to integrate with our API, view endpoints, and explore code examples.
+                    </p>
+                    <a
+                      href="https://vdocs.xash.co.zw/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center space-x-2 px-4 py-2 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 rounded-lg text-orange-300 hover:text-orange-200 transition-colors duration-200"
+                    >
+                      <span>View Documentation</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+
               {/* API Key Usage Information */}
               <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
                 <div className="flex items-start space-x-3">
