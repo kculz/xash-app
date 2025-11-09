@@ -20,6 +20,14 @@ export const Register = ({ onSuccess, onLoginClick }) => {
     id_number: ''
   });
 
+  // Function to convert YYYY-MM-DD to d/m/Y format
+  const convertDateFormat = (dateString) => {
+    if (!dateString) return '';
+    
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  };
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -40,7 +48,13 @@ export const Register = ({ onSuccess, onLoginClick }) => {
     setErrors({});
 
     try {
-      await register(formData);
+      // Convert the date format before sending to API
+      const submitData = {
+        ...formData,
+        dob: convertDateFormat(formData.dob)
+      };
+      
+      await register(submitData);
       // Store phone number for SetPassword component
       localStorage.setItem('registration_phone', formData.phone);
       onSuccess?.(formData.phone);
