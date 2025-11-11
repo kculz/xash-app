@@ -154,6 +154,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Add the createBusiness function here
+  const createBusiness = async (businessData) => {
+    try {
+      const response = await api.request('/auth/create-business', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: businessData
+      });
+      
+      // Update user data with business information
+      if (response.success && response.data) {
+        // Refresh user profile to get updated business data
+        await fetchUserProfile(token);
+      }
+      
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const value = {
     user,
     token,
@@ -162,7 +185,8 @@ export const AuthProvider = ({ children }) => {
     setPassword,
     resendUserNumber,
     login,
-    logout
+    logout,
+    createBusiness // Add it to the context value
   };
 
   return (

@@ -43,6 +43,28 @@ const generateDummyProfile = () => ({
   }
 });
 
+// Generate dummy business creation response
+const generateDummyBusiness = (businessData) => ({
+  success: true,
+  message: "Business created successfully.",
+  data: {
+    id: Math.floor(Math.random() * 1000) + 1,
+    business_name: businessData.business_name,
+    business_category: businessData.business_category,
+    bp_number: businessData.bp_number || null,
+    home_address: {
+      address_line_1: businessData.address_line_1,
+      address_line_2: businessData.address_line_2 || null,
+      city: businessData.city
+    },
+    business_address: {
+      business_address_line_1: businessData.business_address_line_1,
+      business_address_line_2: businessData.business_address_line_2 || null,
+      business_city: businessData.business_city
+    }
+  }
+});
+
 const generateDummyWallet = () => ({
   success: true,
   message: "Wallet balance retrieved successfully",
@@ -104,12 +126,24 @@ export const api = {
 
     if (config.body) {
       config.body = JSON.stringify(config.body);
+      console.log('API Request Body:', config.body); // Debug log
     }
+
+    console.log('API Request Config:', { // Debug log
+      url,
+      method: config.method,
+      headers: config.headers
+    });
 
     try {
       const response = await fetch(url, config);
       const data = await response.json();
       
+      console.log('API Response:', { // Debug log
+        status: response.status,
+        data
+      });
+
       if (!response.ok) {
         // Handle 401 Unauthorized specifically
         if (response.status === 401) {
@@ -118,6 +152,17 @@ export const api = {
           window.location.reload(); // Force re-authentication
           throw new Error('Session expired. Please login again.');
         }
+
+         // Handle 422 Validation errors - return the actual API response
+        if (response.status === 422) {
+          // Return the actual validation errors from the API
+          throw {
+            status: 422,
+            message: data.message || 'Validation failed',
+            errors: data.errors || {}
+          };
+        }
+
         throw new Error(data.message || `API request failed with status ${response.status}`);
       }
       
@@ -199,6 +244,21 @@ export const api = {
           success: true,
           message: "Logout successful."
         };
+
+      case '/auth/create-business':
+        // Validate required fields for dummy data
+        const requiredFields = [
+          'business_name', 'business_category', 'address_line_1', 
+          'city', 'business_address_line_1', 'business_city'
+        ];
+        
+        for (const field of requiredFields) {
+          if (!options.body[field] || options.body[field].length < 3) {
+            throw new Error(`Validation failed: ${field} is required and must be at least 3 characters`);
+          }
+        }
+
+        return generateDummyBusiness(options.body);
 
       case '/profile':
         return generateDummyProfile();
