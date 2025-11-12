@@ -160,7 +160,8 @@ export const AuthProvider = ({ children }) => {
       const response = await api.request('/auth/create-business', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
         body: businessData
       });
