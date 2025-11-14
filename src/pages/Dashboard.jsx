@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   RefreshCw
 } from 'lucide-react';
+import { Helmet } from 'react-helmet';
 
 export const Dashboard = () => {
   const { user, token, logout } = useAuth();
@@ -196,6 +197,11 @@ export const Dashboard = () => {
 
   return (
     <div>
+    <Helmet>
+      <meta charSet="utf-8" />
+      <title>Xash | My Dashboard</title>
+    </Helmet>
+      
       {/* Header with Refresh */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
         <div>

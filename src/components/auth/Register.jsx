@@ -6,6 +6,7 @@ import { Card } from '../ui/Card';
 import { useAuth } from '../../hooks/useAuth';
 import Logo from "../../assets/xash.png"
 import { ArrowLeft } from 'lucide-react';
+import { Helmet } from 'react-helmet';
 
 export const Register = ({ onSuccess, onLoginClick }) => {
   const { register } = useAuth();
@@ -66,105 +67,111 @@ export const Register = ({ onSuccess, onLoginClick }) => {
   };
 
   return (
-    <Card className="max-w-md mx-auto">
-      {/* Header with back button */}
-      <div className="flex items-center justify-between mb-4">
-        <button 
-          onClick={onLoginClick}
-          className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm">Back to Login</span>
-        </button>
-      </div>
-
-      <div className="flex items-center justify-center mb-6">
-        <img src={Logo} alt="logo" width={100} />
-      </div>
-      
-      <h2 className="text-2xl font-bold text-white mb-6 text-center">Create Account</h2>
-      
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            label="First Name"
-            name="first_name"
-            value={formData.first_name}
-            onChange={handleChange}
-            required
-            error={errors.first_name}
-          />
-          
-          <Input
-            label="Last Name"
-            name="last_name"
-            value={formData.last_name}
-            onChange={handleChange}
-            required
-            error={errors.last_name}
-          />
-        </div>
-
-        <Input
-          label="Date of Birth"
-          type="date"
-          name="dob"
-          value={formData.dob}
-          onChange={handleChange}
-          required
-          error={errors.dob}
-        />
-
-        <Input
-          label="Phone Number"
-          type="tel"
-          name="phone"
-          placeholder="263775123456"
-          value={formData.phone}
-          onChange={handleChange}
-          required
-          error={errors.phone}
-        />
-
-        <Input
-          label="Email (Optional)"
-          type="email"
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-          error={errors.email}
-        />
-
-        <Input
-          label="ID Number"
-          name="id_number"
-          placeholder="71-123456X55"
-          value={formData.id_number}
-          onChange={handleChange}
-          required
-          error={errors.id_number}
-        />
-
-        {errors.submit && (
-          <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg">
-            <p className="text-red-500 text-sm">{errors.submit}</p>
-          </div>
-        )}
-
-        <Button type="submit" loading={loading} className="w-full mb-4">
-          Register
-        </Button>
-
-        <div className="text-center">
+    <>
+    <Helmet>
+      <meta charSet="utf-8" />
+      <title>Xash | Register</title>
+    </Helmet>
+      <Card className="max-w-md mx-auto">
+        {/* Header with back button */}
+        <div className="flex items-center justify-between mb-4">
           <button 
-            type="button"
             onClick={onLoginClick}
-            className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
+            className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
           >
-            Already have an account? Sign in
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-sm">Back to Login</span>
           </button>
         </div>
-      </form>
-    </Card>
+
+        <div className="flex items-center justify-center mb-6">
+          <img src={Logo} alt="logo" width={100} />
+        </div>
+        
+        <h2 className="text-2xl font-bold text-white mb-6 text-center">Create Account</h2>
+        
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="First Name"
+              name="first_name"
+              value={formData.first_name}
+              onChange={handleChange}
+              required
+              error={errors.first_name}
+            />
+            
+            <Input
+              label="Last Name"
+              name="last_name"
+              value={formData.last_name}
+              onChange={handleChange}
+              required
+              error={errors.last_name}
+            />
+          </div>
+
+          <Input
+            label="Date of Birth"
+            type="date"
+            name="dob"
+            value={formData.dob}
+            onChange={handleChange}
+            required
+            error={errors.dob}
+          />
+
+          <Input
+            label="Phone Number"
+            type="tel"
+            name="phone"
+            placeholder="263775123456"
+            value={formData.phone}
+            onChange={handleChange}
+            required
+            error={errors.phone}
+          />
+
+          <Input
+            label="Email (Optional)"
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            error={errors.email}
+          />
+
+          <Input
+            label="ID Number"
+            name="id_number"
+            placeholder="71-123456X55"
+            value={formData.id_number}
+            onChange={handleChange}
+            required
+            error={errors.id_number}
+          />
+
+          {errors.submit && (
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg">
+              <p className="text-red-500 text-sm">{errors.submit}</p>
+            </div>
+          )}
+
+          <Button type="submit" loading={loading} className="w-full mb-4">
+            Register
+          </Button>
+
+          <div className="text-center">
+            <button 
+              type="button"
+              onClick={onLoginClick}
+              className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
+            >
+              Already have an account? Sign in
+            </button>
+          </div>
+        </form>
+      </Card>
+    </>
   );
 };

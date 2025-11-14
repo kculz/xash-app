@@ -6,6 +6,7 @@ import { Card } from '../ui/Card';
 import { useAuth } from '../../hooks/useAuth';
 import Logo from "../../assets/xash.png"
 import { ArrowLeft } from 'lucide-react';
+import { Helmet } from 'react-helmet';
 
 export const SetPassword = ({ onSuccess, onBack }) => {
   const { setPassword } = useAuth();
@@ -78,67 +79,73 @@ export const SetPassword = ({ onSuccess, onBack }) => {
   };
 
   return (
-    <Card className="max-w-md mx-auto">
-      {/* Header with back button */}
-      <div className="flex items-center justify-between mb-4">
-        <button 
-          onClick={onBack}
-          className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm">Back to Registration</span>
-        </button>
-      </div>
+    <>
+    <Helmet>
+      <meta charSet="utf-8" />
+      <title>Xash | Set Password</title>
+    </Helmet>
+      <Card className="max-w-md mx-auto">
+        {/* Header with back button */}
+        <div className="flex items-center justify-between mb-4">
+          <button 
+            onClick={onBack}
+            className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-sm">Back to Registration</span>
+          </button>
+        </div>
 
-      <div className="flex items-center justify-center mb-6">
-        <img src={Logo} alt="logo" width={100} />
-      </div>
+        <div className="flex items-center justify-center mb-6">
+          <img src={Logo} alt="logo" width={100} />
+        </div>
 
-      <h2 className="text-2xl font-bold text-white mb-6 text-center">Set Password</h2>
-      
-      <form onSubmit={handleSubmit}>
-        <Input
-          label="User Number"
-          name="user_number"
-          value={formData.user_number}
-          onChange={handleChange}
-          required
-          placeholder="Enter the 6-digit user number sent to you"
-          error={errors.user_number}
-        />
+        <h2 className="text-2xl font-bold text-white mb-6 text-center">Set Password</h2>
+        
+        <form onSubmit={handleSubmit}>
+          <Input
+            label="User Number"
+            name="user_number"
+            value={formData.user_number}
+            onChange={handleChange}
+            required
+            placeholder="Enter the 6-digit user number sent to you"
+            error={errors.user_number}
+          />
 
-        <Input
-          label="Password"
-          type="password"
-          name="password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-          placeholder="Minimum 8 characters with letters, numbers, and symbols"
-          error={errors.password}
-        />
+          <Input
+            label="Password"
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+            placeholder="Minimum 8 characters with letters, numbers, and symbols"
+            error={errors.password}
+          />
 
-        <Input
-          label="Confirm Password"
-          type="password"
-          name="password_confirmation"
-          value={formData.password_confirmation}
-          onChange={handleChange}
-          required
-          placeholder="Confirm your password"
-          error={errors.password_confirmation}
-        />
+          <Input
+            label="Confirm Password"
+            type="password"
+            name="password_confirmation"
+            value={formData.password_confirmation}
+            onChange={handleChange}
+            required
+            placeholder="Confirm your password"
+            error={errors.password_confirmation}
+          />
 
-        {errors.submit && (
-          <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg">
-            <p className="text-red-500 text-sm">{errors.submit}</p>
-          </div>
-        )}
+          {errors.submit && (
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg">
+              <p className="text-red-500 text-sm">{errors.submit}</p>
+            </div>
+          )}
 
-        <Button type="submit" loading={loading} className="w-full">
-          Set Password & Complete Registration
-        </Button>
-      </form>
-    </Card>
+          <Button type="submit" loading={loading} className="w-full">
+            Set Password & Complete Registration
+          </Button>
+        </form>
+      </Card>
+    </>
   );
 };

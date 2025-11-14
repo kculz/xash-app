@@ -1,5 +1,4 @@
-// src/App.jsx
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { Layout } from './components/layout/Layout';
 import { Register } from './components/auth/Register';

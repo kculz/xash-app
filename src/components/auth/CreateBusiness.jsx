@@ -6,6 +6,7 @@ import { Card } from '../ui/Card';
 import { useAuth } from '../../hooks/useAuth';
 import Logo from "../../assets/xash.png";
 import { ArrowLeft, Building2 } from 'lucide-react';
+import { Helmet } from 'react-helmet';
 
 // Business categories - you can expand this list
 const BUSINESS_CATEGORIES = [
@@ -217,198 +218,204 @@ export const CreateBusiness = ({ onSuccess, onBack }) => {
   };
 
   return (
-    <Card className="max-w-2xl mx-auto">
-      {/* Header with back button */}
-      <div className="flex items-center justify-between mb-4">
-        <button 
-          onClick={onBack}
-          className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm">Back</span>
-        </button>
-      </div>
-
-      <div className="flex items-center justify-center mb-6">
-        <img src={Logo} alt="logo" width={100} />
-      </div>
-      
-      <div className="flex items-center justify-center mb-6">
-        <div className="flex items-center space-x-3">
-          <Building2 className="w-8 h-8 text-blue-400" />
-          <h2 className="text-2xl font-bold text-white">Create Your Business</h2>
+    <>
+    <Helmet>
+      <meta charSet="utf-8" />
+      <title>Xash | Create Business</title>
+    </Helmet>
+      <Card className="max-w-2xl mx-auto">
+        {/* Header with back button */}
+        <div className="flex items-center justify-between mb-4">
+          <button 
+            onClick={onBack}
+            className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-sm">Back</span>
+          </button>
         </div>
-      </div>
 
-      <p className="text-gray-400 text-center mb-8">
-        Complete your profile by adding your business information
-      </p>
-      
-      <form onSubmit={handleSubmit}>
-        {/* Business Information Section */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold text-white mb-4 border-b border-gray-700 pb-2">
-            Business Information
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Business Name *"
-              name="business_name"
-              value={formData.business_name}
-              onChange={handleChange}
-              placeholder="Xash Technologies"
-              required
-              error={errors.business_name}
-              minLength={2}
-              maxLength={50}
-            />
+        <div className="flex items-center justify-center mb-6">
+          <img src={Logo} alt="logo" width={100} />
+        </div>
+        
+        <div className="flex items-center justify-center mb-6">
+          <div className="flex items-center space-x-3">
+            <Building2 className="w-8 h-8 text-blue-400" />
+            <h2 className="text-2xl font-bold text-white">Create Your Business</h2>
+          </div>
+        </div>
+
+        <p className="text-gray-400 text-center mb-8">
+          Complete your profile by adding your business information
+        </p>
+        
+        <form onSubmit={handleSubmit}>
+          {/* Business Information Section */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-white mb-4 border-b border-gray-700 pb-2">
+              Business Information
+            </h3>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Business Category *
-              </label>
-              <select
-                name="business_category"
-                value={formData.business_category}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Business Name *"
+                name="business_name"
+                value={formData.business_name}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors ${
-                  errors.business_category ? 'border-red-500' : 'border-gray-700 focus:border-blue-500'
-                }`}
+                placeholder="Xash Technologies"
                 required
-              >
-                <option value="">Select Category</option>
-                {BUSINESS_CATEGORIES.map(category => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-              {errors.business_category && (
-                <p className="mt-1 text-sm text-red-500">{errors.business_category}</p>
-              )}
+                error={errors.business_name}
+                minLength={2}
+                maxLength={50}
+              />
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Business Category *
+                </label>
+                <select
+                  name="business_category"
+                  value={formData.business_category}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors ${
+                    errors.business_category ? 'border-red-500' : 'border-gray-700 focus:border-blue-500'
+                  }`}
+                  required
+                >
+                  <option value="">Select Category</option>
+                  {BUSINESS_CATEGORIES.map(category => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+                {errors.business_category && (
+                  <p className="mt-1 text-sm text-red-500">{errors.business_category}</p>
+                )}
+              </div>
+
+              <Input
+                label="BP Number (Optional)"
+                name="bp_number"
+                value={formData.bp_number}
+                onChange={handleChange}
+                placeholder="BP12345678"
+                error={errors.bp_number}
+              />
             </div>
-
-            <Input
-              label="BP Number (Optional)"
-              name="bp_number"
-              value={formData.bp_number}
-              onChange={handleChange}
-              placeholder="BP12345678"
-              error={errors.bp_number}
-            />
           </div>
-        </div>
 
-        {/* Home Address Section */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold text-white mb-4 border-b border-gray-700 pb-2">
-            Home Address
-          </h3>
-          
-          <div className="space-y-4">
-            <Input
-              label="Address Line 1 *"
-              name="address_line_1"
-              value={formData.address_line_1}
-              onChange={handleChange}
-              placeholder="123 Main Street"
-              required
-              error={errors.address_line_1}
-              minLength={3}
-              maxLength={256}
-            />
+          {/* Home Address Section */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-white mb-4 border-b border-gray-700 pb-2">
+              Home Address
+            </h3>
             
-            <Input
-              label="Address Line 2 (Optional)"
-              name="address_line_2"
-              value={formData.address_line_2}
-              onChange={handleChange}
-              placeholder="Apartment, Suite, etc."
-              error={errors.address_line_2}
-              minLength={3}
-              maxLength={256}
-            />
-            
-            <Input
-              label="City *"
-              name="city"
-              value={formData.city}
-              onChange={handleChange}
-              placeholder="Mutare"
-              required
-              error={errors.city}
-              minLength={3}
-              maxLength={256}
-            />
+            <div className="space-y-4">
+              <Input
+                label="Address Line 1 *"
+                name="address_line_1"
+                value={formData.address_line_1}
+                onChange={handleChange}
+                placeholder="123 Main Street"
+                required
+                error={errors.address_line_1}
+                minLength={3}
+                maxLength={256}
+              />
+              
+              <Input
+                label="Address Line 2 (Optional)"
+                name="address_line_2"
+                value={formData.address_line_2}
+                onChange={handleChange}
+                placeholder="Apartment, Suite, etc."
+                error={errors.address_line_2}
+                minLength={3}
+                maxLength={256}
+              />
+              
+              <Input
+                label="City *"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                placeholder="Mutare"
+                required
+                error={errors.city}
+                minLength={3}
+                maxLength={256}
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Business Address Section */}
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold text-white mb-4 border-b border-gray-700 pb-2">
-            Business Address
-          </h3>
-          
-          <div className="space-y-4">
-            <Input
-              label="Business Address Line 1 *"
-              name="business_address_line_1"
-              value={formData.business_address_line_1}
-              onChange={handleChange}
-              placeholder="456 Business Avenue"
-              required
-              error={errors.business_address_line_1}
-              minLength={3}
-              maxLength={256}
-            />
+          {/* Business Address Section */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-white mb-4 border-b border-gray-700 pb-2">
+              Business Address
+            </h3>
             
-            <Input
-              label="Business Address Line 2 (Optional)"
-              name="business_address_line_2"
-              value={formData.business_address_line_2}
-              onChange={handleChange}
-              placeholder="Floor, Unit, etc."
-              error={errors.business_address_line_2}
-              minLength={3}
-              maxLength={256}
-            />
-            
-            <Input
-              label="Business City *"
-              name="business_city"
-              value={formData.business_city}
-              onChange={handleChange}
-              placeholder="Mutare"
-              required
-              error={errors.business_city}
-              minLength={3}
-              maxLength={256}
-            />
+            <div className="space-y-4">
+              <Input
+                label="Business Address Line 1 *"
+                name="business_address_line_1"
+                value={formData.business_address_line_1}
+                onChange={handleChange}
+                placeholder="456 Business Avenue"
+                required
+                error={errors.business_address_line_1}
+                minLength={3}
+                maxLength={256}
+              />
+              
+              <Input
+                label="Business Address Line 2 (Optional)"
+                name="business_address_line_2"
+                value={formData.business_address_line_2}
+                onChange={handleChange}
+                placeholder="Floor, Unit, etc."
+                error={errors.business_address_line_2}
+                minLength={3}
+                maxLength={256}
+              />
+              
+              <Input
+                label="Business City *"
+                name="business_city"
+                value={formData.business_city}
+                onChange={handleChange}
+                placeholder="Mutare"
+                required
+                error={errors.business_city}
+                minLength={3}
+                maxLength={256}
+              />
+            </div>
           </div>
-        </div>
 
-        {errors.submit && (
-          <div className="mb-6 p-3 bg-red-500/20 border border-red-500 rounded-lg">
-            <p className="text-red-500 text-sm">{errors.submit}</p>
+          {errors.submit && (
+            <div className="mb-6 p-3 bg-red-500/20 border border-red-500 rounded-lg">
+              <p className="text-red-500 text-sm">{errors.submit}</p>
+            </div>
+          )}
+
+          <Button 
+            type="submit" 
+            loading={loading} 
+            className="w-full mb-4"
+            disabled={!user || !token}
+          >
+            {user && token ? 'Create Business & Continue' : 'Please login first'}
+          </Button>
+
+          <div className="text-center">
+            <p className="text-gray-400 text-sm">
+              Your business information will be verified before you can start trading.
+            </p>
           </div>
-        )}
-
-        <Button 
-          type="submit" 
-          loading={loading} 
-          className="w-full mb-4"
-          disabled={!user || !token}
-        >
-          {user && token ? 'Create Business & Continue' : 'Please login first'}
-        </Button>
-
-        <div className="text-center">
-          <p className="text-gray-400 text-sm">
-            Your business information will be verified before you can start trading.
-          </p>
-        </div>
-      </form>
-    </Card>
+        </form>
+      </Card>
+    </>
   );
 };
