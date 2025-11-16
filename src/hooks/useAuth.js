@@ -71,6 +71,7 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, [token]);
 
+  // Authentication functions
   const register = async (userData) => {
     try {
       const response = await api.request('/auth/register', {
@@ -154,7 +155,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Add the createBusiness function here
+  // Business functions
   const createBusiness = async (businessData) => {
     try {
       const response = await api.request('/auth/create-business', {
@@ -178,16 +179,275 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Wallet functions
+  const getWalletBalance = async () => {
+    try {
+      const response = await api.request('/wallet', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Airtime functions
+  const getAirtimeCarriers = async () => {
+    try {
+      const response = await api.request('/airtime/carriers', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const buyDirectAirtime = async (airtimeData) => {
+    try {
+      const response = await api.request('/airtime/direct', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: airtimeData
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const getVoucherValues = async (carrierId) => {
+    try {
+      const response = await api.request(`/airtime/direct/${carrierId}/values`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const buyVoucherAirtime = async (carrierId, voucherData) => {
+    try {
+      const response = await api.request(`/airtime/direct/voucher/${carrierId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: voucherData
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Bundles functions
+  const getBundles = async (filters = {}) => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (filters.currency) queryParams.append('currency', filters.currency);
+      if (filters.network) queryParams.append('network', filters.network);
+
+      const endpoint = queryParams.toString() 
+        ? `/bundles?${queryParams.toString()}`
+        : '/bundles';
+
+      const response = await api.request(endpoint, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const buyDirectBundle = async (bundleId, bundleData) => {
+    try {
+      const response = await api.request(`/bundles/buy/${bundleId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: bundleData
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const buyBundleVoucher = async (bundleId, voucherData) => {
+    try {
+      const response = await api.request(`/bundles/voucher/buy/${bundleId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: voucherData
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Electricity functions
+  const checkElectricityAccount = async (accountData) => {
+    try {
+      const response = await api.request('/electricity/check-account', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: accountData
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const buyElectricityTokens = async (tokenData) => {
+    try {
+      const response = await api.request('/electricity/buy-tokens', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: tokenData
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Transfer functions
+  const initiateTransfer = async (transferData) => {
+    try {
+      const response = await api.request('/transfer', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: transferData
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const confirmTransfer = async (transferId) => {
+    try {
+      const response = await api.request(`/transfer/confirm/${transferId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Reports and History functions
+  const getTransactionHistory = async (currency = 'USD') => {
+    try {
+      const response = await api.request(`/reports/history/${currency}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const getCommissions = async () => {
+    try {
+      const response = await api.request('/reports/commissions', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const value = {
+    // User state
     user,
     token,
     loading,
+    
+    // Authentication functions
     register,
     setPassword,
     resendUserNumber,
     login,
     logout,
-    createBusiness // Add it to the context value
+    
+    // Business functions
+    createBusiness,
+    
+    // Wallet functions
+    getWalletBalance,
+    
+    // Airtime functions
+    getAirtimeCarriers,
+    buyDirectAirtime,
+    getVoucherValues,
+    buyVoucherAirtime,
+    
+    // Bundles functions
+    getBundles,
+    buyDirectBundle,
+    buyBundleVoucher,
+    
+    // Electricity functions
+    checkElectricityAccount,
+    buyElectricityTokens,
+    
+    // Transfer functions
+    initiateTransfer,
+    confirmTransfer,
+    
+    // Reports functions
+    getTransactionHistory,
+    getCommissions,
+    
+    // Utility functions
+    fetchUserProfile
   };
 
   return (

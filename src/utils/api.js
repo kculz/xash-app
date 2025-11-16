@@ -275,6 +275,386 @@ export const api = {
       case '/reports/commissions':
         return generateDummyCommissions();
 
+      case '/airtime/carriers':
+        return {
+          success: true,
+          message: "Supported carriers",
+          data: [
+            {
+              id: 1,
+              name: "Econet",
+              commission: 0.05,
+              has_direct_airtime: true,
+              has_voucher: true,
+              has_bundle: true
+            },
+            {
+              id: 2,
+              name: "NetOne",
+              commission: 0.03,
+              has_direct_airtime: true,
+              has_voucher: false,
+              has_bundle: true
+            },
+            {
+              id: 3,
+              name: "Telecel",
+              commission: 0.04,
+              has_direct_airtime: true,
+              has_voucher: true,
+              has_bundle: false
+            }
+          ]
+        };
+
+      case '/airtime/direct':
+        return {
+          success: true,
+          message: `Recharge to ${options.body.mobile_phone} was successful`,
+          data: {
+            name: "Econet",
+            amount: parseFloat(options.body.amount),
+            currency: options.body.currency,
+            mobile_phone: options.body.mobile_phone,
+            status: "success",
+            balance: {
+              balance: Math.random() * 1000,
+              currency: options.body.currency,
+              profit_on_hold: 0
+            },
+            commission: `${options.body.currency}${(parseFloat(options.body.amount) * 0.05).toFixed(2)}`
+          }
+        };
+
+      case '/airtime/direct/{carrier}/values':
+        return {
+          success: true,
+          message: "Carrier voucher values",
+          allow_custom_amount: true,
+          data: [5, 10, 20, 50, 100]
+        };
+
+      case '/airtime/direct/voucher/{carrier}':
+        return {
+          success: true,
+          message: "Carrier Name purchase was successful",
+          data: {
+            status: "success",
+            name: "Econet",
+            amount: parseFloat(options.body.amount) * parseInt(options.body.quantity),
+            voucher_value: parseFloat(options.body.amount),
+            currency: options.body.currency,
+            balance: {
+              balance: Math.random() * 1000,
+              currency: options.body.currency,
+              profit_on_hold: 0
+            },
+            vouchers: Array.from({ length: options.body.quantity }, (_, i) => 
+              Math.random().toString(36).substr(2, 10).toUpperCase()
+            ),
+            commission: `${options.body.currency}${(parseFloat(options.body.amount) * parseInt(options.body.quantity) * 0.05).toFixed(2)}`
+          }
+        };
+
+      case '/bundles':
+        return {
+          success: true,
+          message: "Available bundles",
+          data: [
+            {
+              id: 1,
+              name: "Daily Social",
+              description: "500MB + WhatsApp, Facebook, Twitter",
+              price: 1.50,
+              currency: "USD",
+              network: "Econet",
+              valid_for: 1
+            },
+            {
+              id: 2,
+              name: "Weekly Basic",
+              description: "2GB for browsing and social media",
+              price: 5.00,
+              currency: "USD",
+              network: "Econet",
+              valid_for: 7
+            },
+            {
+              id: 3,
+              name: "Monthly Pro",
+              description: "10GB high-speed data",
+              price: 20.00,
+              currency: "USD",
+              network: "Econet",
+              valid_for: 30
+            },
+            {
+              id: 4,
+              name: "Daily Bundle",
+              description: "300MB all-purpose data",
+              price: 1.00,
+              currency: "USD",
+              network: "NetOne",
+              valid_for: 1
+            },
+            {
+              id: 5,
+              name: "Weekly Max",
+              description: "5GB unlimited browsing",
+              price: 8.00,
+              currency: "USD",
+              network: "NetOne",
+              valid_for: 7
+            },
+            {
+              id: 6,
+              name: "Weekend Special",
+              description: "1GB weekend data",
+              price: 2.50,
+              currency: "USD",
+              network: "Telecel",
+              valid_for: 2
+            },
+            {
+              id: 7,
+              name: "Student Bundle",
+              description: "3GB educational content",
+              price: 3.00,
+              currency: "ZWL",
+              network: "Econet",
+              valid_for: 7
+            },
+            {
+              id: 8,
+              name: "Business Lite",
+              description: "15GB with priority service",
+              price: 25.00,
+              currency: "USD",
+              network: "Econet",
+              valid_for: 30
+            }
+          ]
+        };
+
+      case '/bundles/buy/{bundle}':
+        const directBundle = bundles.find(b => b.id === parseInt(options.body.bundle)) || {
+          name: "Daily Bundle",
+          price: 1.00,
+          currency: "USD"
+        };
+        
+        return {
+          success: true,
+          message: `${directBundle.name} bundle purchased successfully`,
+          data: {
+            name: directBundle.name,
+            amount: directBundle.price,
+            currency: directBundle.currency,
+            mobile_phone: options.body.mobile_phone,
+            status: "success",
+            balance: {
+              balance: Math.random() * 1000,
+              currency: directBundle.currency,
+              profit_on_hold: 0
+            },
+            commission: `${directBundle.currency}${(directBundle.price * 0.05).toFixed(2)}`
+          }
+        };
+
+      case '/bundles/voucher/buy/{bundle}':
+        const voucherBundle = bundles.find(b => b.id === parseInt(options.body.bundle)) || {
+          name: "Daily Bundle",
+          price: 1.00,
+          currency: "USD"
+        };
+        
+        const totalAmount = voucherBundle.price * options.body.quantity;
+        
+        return {
+          success: true,
+          message: `${voucherBundle.name} purchase was successful`,
+          data: {
+            name: voucherBundle.name,
+            amount: totalAmount,
+            voucher_value: voucherBundle.price,
+            currency: voucherBundle.currency,
+            status: "success",
+            vouchers: Array.from({ length: options.body.quantity }, (_, i) => 
+              Math.random().toString(36).substr(2, 12).toUpperCase()
+            ),
+            balance: {
+              balance: Math.random() * 1000,
+              currency: voucherBundle.currency,
+              profit_on_hold: 0
+            },
+            commission: `${voucherBundle.currency}${(totalAmount * 0.05).toFixed(2)}`
+          }
+        };
+
+      case '/electricity/check-account':
+        // Generate realistic dummy data
+        const customerNames = ['John Doe', 'Sarah Smith', 'Mike Johnson', 'Lisa Brown', 'David Wilson'];
+        const addresses = [
+          '123 Main St, Harare',
+          '456 Central Ave, Bulawayo', 
+          '789 Park Lane, Mutare',
+          '321 Lake View, Gweru',
+          '654 Hillside, Masvingo'
+        ];
+        
+        const randomIndex = Math.floor(Math.random() * customerNames.length);
+        
+        return {
+          success: true,
+          message: "Account verified successfully.",
+          data: {
+            customer_name: customerNames[randomIndex],
+            customer_address: addresses[randomIndex],
+            meter_number: options.body.meter_number,
+            meter_currency: options.body.currency === 'USD' ? 'ZIG' : 'ZWL',
+            success: true
+          }
+        };
+
+      case '/electricity/buy-tokens':
+        const amount = parseFloat(options.body.amount);
+        const kwh = (amount * 10.6).toFixed(1); // Simple conversion rate
+        
+        // Generate tokens based on amount
+        const tokenCount = amount <= 5 ? 1 : amount <= 20 ? 2 : 3;
+        const tokens = Array.from({ length: tokenCount }, (_, index) => {
+          const tokenUnits = (kwh / tokenCount).toFixed(1);
+          return {
+            token: Math.random().toString().substr(2, 20),
+            units: tokenUnits,
+            formatted: Math.random().toString().substr(2, 20).replace(/(.{4})/g, '$1 ').trim(),
+            rate: "50.0@1.08: 50.0@1.22: 6.0@2.17: ",
+            receipt: Math.random().toString().substr(2, 16),
+            tax_rate: "0.00",
+            net_amount: (amount * 0.94).toFixed(2),
+            tax_amount: "0.00",
+            position: index + 1
+          };
+        });
+
+        return {
+          success: true,
+          message: "ZESA tokens purchased successfully.",
+          data: {
+            customer_name: "John Doe",
+            customer_address: "123 Main St, Harare",
+            meter_number: options.body.meter_number,
+            meter_currency: "ZIG",
+            kwh: kwh,
+            energy: `ZIG${(amount * 0.94).toFixed(2)}`,
+            debt: "ZIG0.00",
+            rea: `ZIG${(amount * 0.06).toFixed(2)}`,
+            vat: "ZIG0.00",
+            tendered_currency: options.body.currency,
+            tendered: `${options.body.currency}${amount.toFixed(2)}`,
+            total_amt: `ZIG${amount.toFixed(2)}`,
+            date: new Date().toLocaleString('en-GB', { 
+              day: '2-digit', 
+              month: '2-digit', 
+              year: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+            tokens: tokens,
+            balance: {
+              currency: options.body.currency,
+              name: options.body.currency === 'USD' ? 'US Dollar' : 'Zimbabwe Dollar',
+              profit_on_hold: (amount * 0.025).toFixed(2),
+              balance: (Math.random() * 1000).toFixed(2)
+            },
+            commission: `${options.body.currency}${(amount * 0.025).toFixed(2)}`
+          }
+        };
+
+
+      case '/transfer':
+        // Check if user is trying to transfer to themselves
+        if (options.body.recipient === '123456') { // Assuming 123456 is the current user's number
+          throw {
+            status: 400,
+            message: "You cannot transfer to yourself."
+          };
+        }
+
+        // Check balance
+        const wallet = generateDummyWallet().data[0];
+        const transferAmount = parseFloat(options.body.amount);
+        
+        if (transferAmount > parseFloat(wallet.value)) {
+          throw {
+            status: 400,
+            message: "You do not have enough balance to make this transaction."
+          };
+        }
+
+        // Mock recipient data based on user number
+        const recipientNames = {
+          '111111': { first_name: 'Sarah', last_name: 'Smith' },
+          '222222': { first_name: 'Mike', last_name: 'Johnson' },
+          '333333': { first_name: 'Lisa', last_name: 'Brown' },
+          '444444': { first_name: 'David', last_name: 'Wilson' },
+          '555555': { first_name: 'Emma', last_name: 'Davis' }
+        };
+
+        const recipient = recipientNames[options.body.recipient] || { 
+          first_name: 'User', 
+          last_name: options.body.recipient 
+        };
+
+        return {
+          success: true,
+          message: "Transfer initiated successfully.",
+          data: {
+            id: Math.random().toString(36).substr(2, 9),
+            sender: "263775123456", // Current user's number
+            recipient: options.body.recipient,
+            first_name: recipient.first_name,
+            last_name: recipient.last_name,
+            amount: options.body.amount,
+            currency: options.body.currency,
+            reference: options.body.reference || null
+          }
+        };
+
+      case '/transfer/confirm/{transfer}':
+        const walletBalance = generateDummyWallet().data[0];
+        const confirmedAmount = parseFloat(transferData.amount);
+        
+        if (confirmedAmount > parseFloat(walletBalance.value)) {
+          throw {
+            status: 400,
+            message: "You do not have enough balance to make this transaction."
+          };
+        }
+
+        // Update balance
+        const newBalance = parseFloat(walletBalance.value) - confirmedAmount;
+
+        return {
+          success: true,
+          message: "Transfer completed successfully.",
+          data: {
+            balance: {
+              currency: transferData.currency,
+              name: transferData.currency === 'USD' ? 'US Dollar' : 'Zimbabwe Dollar',
+              profit_on_hold: "0.00",
+              balance: newBalance.toFixed(2)
+            },
+            transaction_id: Math.random().toString(36).substr(2, 9),
+            recipient: transferData.recipient,
+            amount: transferData.amount,
+            currency: transferData.currency,
+            reference: transferData.reference,
+            first_name: transferData.first_name,
+            last_name: transferData.last_name
+          }
+        };
+
       default:
         // Fallback for unknown endpoints - return a generic success response
         console.warn(`Unknown endpoint: ${endpoint}, returning generic success response`);

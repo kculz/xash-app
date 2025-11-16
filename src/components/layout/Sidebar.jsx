@@ -11,7 +11,8 @@ import {
   BarChart3,
   Wallet,
   Menu,
-  X
+  X,
+  TrendingUp 
 } from 'lucide-react';
 
 // Create a context to share sidebar state
@@ -40,38 +41,44 @@ export const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const navigationItems = [
-    {
-      name: 'Dashboard',
-      path: '/',
-      icon: Home,
-      description: 'Overview and quick stats'
-    },
-    {
-      name: 'Transaction History',
-      path: '/history',
-      icon: History,
-      description: 'View all transactions'
-    },
-    {
-      name: 'Commissions',
-      path: '/commissions',
-      icon: DollarSign,
-      description: 'Commission earnings'
-    },
-    {
-      name: 'Wallet',
-      path: '/wallet',
-      icon: Wallet,
-      description: 'Balance and funds'
-    },
-    {
-      name: 'Profile',
-      path: '/profile',
-      icon: User,
-      description: 'Account settings'
-    }
-  ];
+const navigationItems = [
+  {
+    name: 'Dashboard',
+    path: '/',
+    icon: Home,
+    description: 'Overview and quick stats'
+  },
+  {
+    name: 'Make Payment',
+    path: '/payments',
+    icon: DollarSign,
+    description: 'Airtime, bundles, electricity'
+  },
+  {
+    name: 'Transaction History',
+    path: '/history',
+    icon: History,
+    description: 'View all transactions'
+  },
+  {
+    name: 'Commissions',
+    path: '/commissions',
+    icon: TrendingUp,
+    description: 'Commission earnings'
+  },
+  {
+    name: 'Wallet',
+    path: '/wallet',
+    icon: Wallet,
+    description: 'Balance and funds'
+  },
+  {
+    name: 'Profile',
+    path: '/profile',
+    icon: User,
+    description: 'Account settings'
+  }
+];
 
   const isActive = (path) => {
     return location.pathname === path;

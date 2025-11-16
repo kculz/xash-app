@@ -14,6 +14,13 @@ import { useState, useEffect } from 'react';
 import { Wallet } from './pages/Wallet';
 import { SidebarProvider } from './components/layout/Sidebar';
 
+// Payment Pages
+import { Payments } from './pages/payments/Payments';
+import { Airtime } from './pages/payments/Airtime';
+import { Bundles } from './pages/payments/Bundles';
+import { Electricity } from './pages/payments/Electricity';
+import { Transfer } from './pages/payments/Transfer';
+
 const AppRoutes = () => {
   const { token, user, loading } = useAuth();
   const [authFlow, setAuthFlow] = useState({
@@ -47,11 +54,21 @@ const AppRoutes = () => {
     return (
       <Layout>
         <Routes>
+          {/* Dashboard & Core Pages */}
           <Route path="/" element={<Dashboard />} />
           <Route path="/history" element={<History />} />
           <Route path="/commissions" element={<Commissions />} />
           <Route path="/wallet" element={<Wallet />} />
           <Route path="/profile" element={<Profile />} />
+          
+          {/* Payment Routes */}
+          <Route path="/payments" element={<Payments />} />
+          <Route path="/payments/airtime" element={<Airtime />} />
+          <Route path="/payments/bundles" element={<Bundles />} />
+          <Route path="/payments/electricity" element={<Electricity />} />
+          <Route path="/payments/transfer" element={<Transfer />} />
+          
+          {/* Fallback route */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
