@@ -29,7 +29,6 @@ export const Payments = () => {
     totalBalance: 0,
     recentTransactions: 0,
     successRate: 98.5,
-    totalVolume: 0
   });
   const [recentActivity, setRecentActivity] = useState([]);
 
@@ -83,13 +82,11 @@ export const Payments = () => {
       // Fetch wallet balance
       const walletResponse = await getWalletBalance();
       let totalBalance = 0;
-      let totalVolume = 0;
 
       if (walletResponse.success && walletResponse.data && walletResponse.data.length > 0) {
         const wallet = walletResponse.data[0];
         totalBalance = parseFloat(wallet.value) || 0;
         // Estimate total volume based on balance (for demo purposes)
-        totalVolume = totalBalance * 45.67; // Random multiplier for demo
       }
 
       // Fetch recent transactions
@@ -113,7 +110,6 @@ export const Payments = () => {
         totalBalance,
         recentTransactions,
         successRate: 98.5, // Static for demo
-        totalVolume
       });
 
       setRecentActivity(recentActivityData);
@@ -125,7 +121,6 @@ export const Payments = () => {
         totalBalance: 1250.50,
         recentTransactions: 12,
         successRate: 98.5,
-        totalVolume: 45678
       });
     } finally {
       setLoading(false);
@@ -136,6 +131,18 @@ export const Payments = () => {
   const handleRefresh = () => {
     setRefreshing(true);
     fetchDashboardData();
+  };
+
+  const handleServiceClick = (path) => {
+    navigate(path);
+  };
+
+  const handleViewAllHistory = () => {
+    navigate('/history');
+  };
+
+  const handleActivityClick = () => {
+    navigate('/history');
   };
 
   const formatCurrency = (amount, currency = 'USD') => {
@@ -267,81 +274,7 @@ export const Payments = () => {
           </div>
         </Card>
 
-        <Card className="p-6 relative overflow-hidden group hover:bg-gray-750 transition-colors duration-200">
-          <div className="absolute top-0 left-0 w-full h-1 bg-orange-500"></div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-sm mb-1">Total Volume</p>
-              <p className="text-2xl font-bold text-white">
-                {formatCurrency(stats.totalVolume)}
-              </p>
-              <p className="text-gray-400 text-sm mt-1">All time</p>
-            </div>
-            <div className="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Users className="w-6 h-6 text-orange-400" />
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Popular Services */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-white">Popular Services</h2>
-          <span className="text-gray-400 text-sm">Most used by customers</span>
-        </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {paymentServices
-            .filter(service => service.popular)
-            .map((service, index) => {
-              const Icon = service.icon;
-              return (
-                <Card 
-                  key={index} 
-                  className="p-6 hover:bg-gray-750 transition-all duration-300 cursor-pointer group border border-gray-700 hover:border-gray-600 relative"
-                  onClick={() => navigate(service.path)}
-                >
-                  <div className="flex items-start space-x-4">
-                    <div className={`${service.color} w-12 h-12 rounded-xl flex items-center justify-center text-white group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                      <Icon className="w-6 h-6" />
-                    </div>
-                    
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-xl font-semibold text-white group-hover:text-blue-300 transition-colors">
-                          {service.title}
-                        </h3>
-                        <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-blue-400 transition-colors" />
-                      </div>
-                      
-                      <p className="text-gray-400 mb-4">
-                        {service.description}
-                      </p>
-                      
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {service.features.map((feature, featureIndex) => (
-                          <span 
-                            key={featureIndex}
-                            className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded-md"
-                          >
-                            {feature}
-                          </span>
-                        ))}
-                      </div>
-                      
-                      <Button 
-                        variant="primary"
-                        className="w-full group-hover:bg-blue-700 transition-colors"
-                      >
-                        Get Started
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
-        </div>
       </div>
 
       {/* All Services */}
@@ -358,7 +291,7 @@ export const Payments = () => {
               <Card 
                 key={index} 
                 className="p-6 hover:bg-gray-750 transition-all duration-300 cursor-pointer group border border-gray-700 hover:border-gray-600"
-                onClick={() => navigate(service.path)}
+                onClick={() => handleServiceClick(service.path)}
               >
                 <div className="flex items-start space-x-4">
                   <div className={`${service.color} w-12 h-12 rounded-xl flex items-center justify-center text-white group-hover:scale-110 transition-transform duration-300`}>
@@ -392,6 +325,18 @@ export const Payments = () => {
                         </span>
                       )}
                     </div>
+
+                    {/* Get Started Button */}
+                    <Button 
+                      variant="primary"
+                      className="w-full group-hover:bg-blue-700 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent card click event
+                        handleServiceClick(service.path);
+                      }}
+                    >
+                      Get Started
+                    </Button>
                   </div>
                 </div>
               </Card>
@@ -409,7 +354,7 @@ export const Payments = () => {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => navigate('/history')}
+              onClick={handleViewAllHistory}
             >
               View All
             </Button>
@@ -423,7 +368,7 @@ export const Payments = () => {
                   <div 
                     key={index} 
                     className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-700/50 transition-colors duration-200 cursor-pointer"
-                    onClick={() => navigate('/history')}
+                    onClick={handleActivityClick}
                   >
                     <div className="flex items-center space-x-3">
                       <div className={`${getActivityBgColor(activity.type)} w-10 h-10 rounded-full flex items-center justify-center`}>

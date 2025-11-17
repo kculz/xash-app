@@ -4,6 +4,8 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../hooks/useToast';
+import { SuccessModal, ErrorModal, ConfirmationModal } from '../../components/ui/Modal';
 import { api } from '../../utils/api';
 import { 
   Send, 
@@ -14,19 +16,28 @@ import {
   Clock,
   Copy,
   Shield,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Download
 } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
 
 export const Transfer = () => {
-  const { token, user } = useAuth();
+  const { token, user, getWalletBalance } = useAuth();
+  const { success, error, loading: toastLoading } = useToast();
   const navigate = useNavigate();
+  
   const [step, setStep] = useState('initiate'); // 'initiate' or 'confirm'
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [transferData, setTransferData] = useState(null);
   const [walletBalance, setWalletBalance] = useState(null);
+
+  // Modal states
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [modalData, setModalData] = useState({});
+
+  const [transferData, setTransferData] = useState(null);
 
   // Transfer form state
   const [transferForm, setTransferForm] = useState({
@@ -64,7 +75,6 @@ export const Transfer = () => {
   const handleInitiateTransfer = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
 
     try {
       const response = await api.request('/transfer', {
@@ -79,9 +89,14 @@ export const Transfer = () => {
       if (response.success) {
         setTransferData(response.data);
         setStep('confirm');
+        success('Transfer initiated successfully! Please confirm the details.');
       }
     } catch (error) {
-      setError(error.message);
+      setModalData({
+        title: 'Transfer Failed',
+        message: error.message || 'There was an error initiating the transfer. Please try again.'
+      });
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -89,7 +104,6 @@ export const Transfer = () => {
 
   const handleConfirmTransfer = async () => {
     setLoading(true);
-    setError('');
 
     try {
       const response = await api.request(`/transfer/confirm/${transferData.id}`, {
@@ -102,14 +116,41 @@ export const Transfer = () => {
 
       if (response.success) {
         // Transfer completed successfully
-        setTransferData(prev => ({ ...prev, completed: true, result: response.data }));
-        fetchWalletBalance(); // Refresh balance
+        const result = response.data;
+        setTransferData(prev => ({ ...prev, completed: true, result }));
+        
+        // Show success modal
+        setModalData({
+          title: 'Transfer Successful!',
+          message: `Your transfer of ${result.amount} ${result.currency} to ${result.first_name} ${result.last_name} was completed successfully.`,
+          transferDetails: result,
+          balance: result.balance,
+          transactionId: result.transaction_id
+        });
+        setShowSuccessModal(true);
+        
+        // Refresh wallet balance
+        await getWalletBalance();
+        setShowConfirmModal(false);
       }
     } catch (error) {
-      setError(error.message);
+      setModalData({
+        title: 'Transfer Failed',
+        message: error.message || 'There was an error completing the transfer. Please try again.'
+      });
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
+  };
+
+  const showConfirmationModal = () => {
+    setModalData({
+      title: 'Confirm Transfer',
+      message: `Are you sure you want to transfer ${transferData.amount} ${transferData.currency} to ${transferData.first_name} ${transferData.last_name}? This action cannot be undone.`,
+      transferDetails: transferData
+    });
+    setShowConfirmModal(true);
   };
 
   const handleNewTransfer = () => {
@@ -121,6 +162,16 @@ export const Transfer = () => {
       recipient: '',
       reference: ''
     });
+    setShowSuccessModal(false);
+    setShowErrorModal(false);
+    setModalData({});
+  };
+
+  const handleModalClose = () => {
+    setShowSuccessModal(false);
+    setShowErrorModal(false);
+    setShowConfirmModal(false);
+    setModalData({});
   };
 
   const getAvailableBalance = () => {
@@ -134,8 +185,63 @@ export const Transfer = () => {
   };
 
   const formatUserNumber = (number) => {
-    // Format as XXX-XXX for display
     return number.replace(/(\d{3})(\d{3})/, '$1-$2');
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      success('Copied to clipboard!');
+    });
+  };
+
+  const downloadReceipt = () => {
+    const receiptContent = `
+XASH TRANSFER RECEIPT
+=====================
+
+Transfer Details:
+-----------------
+Transaction ID: ${modalData.transactionId}
+Date: ${new Date().toLocaleString()}
+
+From:
+-----
+User: ${user?.phone || 'N/A'}
+
+To:
+---
+Recipient: ${modalData.transferDetails?.first_name} ${modalData.transferDetails?.last_name}
+User Number: ${modalData.transferDetails?.recipient}
+
+Amount:
+-------
+Transfer Amount: ${modalData.transferDetails?.amount} ${modalData.transferDetails?.currency}
+Reference: ${modalData.transferDetails?.reference || 'N/A'}
+
+Balance Update:
+---------------
+Previous Balance: ${(parseFloat(modalData.balance?.balance) + parseFloat(modalData.transferDetails?.amount)).toFixed(2)} ${modalData.balance?.currency}
+Transfer Amount: -${modalData.transferDetails?.amount} ${modalData.transferDetails?.currency}
+New Balance: ${modalData.balance?.balance} ${modalData.balance?.currency}
+
+Status: COMPLETED
+Processing: Instant
+Fees: No fees
+
+Thank you for using Xash!
+    `.trim();
+
+    const blob = new Blob([receiptContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `xash-transfer-${modalData.transactionId}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    success('Receipt downloaded successfully!');
   };
 
   return (
@@ -160,15 +266,6 @@ export const Transfer = () => {
           </div>
         </div>
       </div>
-
-      {error && (
-        <Card className="mb-6 border-red-500/20 bg-red-500/10">
-          <div className="flex items-center space-x-3 p-4">
-            <AlertCircle className="w-5 h-5 text-red-400" />
-            <p className="text-red-400">{error}</p>
-          </div>
-        </Card>
-      )}
 
       {/* Wallet Balance */}
       {walletBalance && (
@@ -454,7 +551,7 @@ export const Transfer = () => {
                   Edit Transfer
                 </Button>
                 <Button
-                  onClick={handleConfirmTransfer}
+                  onClick={showConfirmationModal}
                   loading={loading}
                   className="flex-1 bg-green-600 hover:bg-green-700"
                 >
@@ -540,171 +637,152 @@ export const Transfer = () => {
         </div>
       )}
 
-      {/* Transfer Completed */}
-      {transferData?.completed && transferData?.result && (
-        <div>
-          {/* Success Header */}
-          <Card className="mb-6 border-green-500/20 bg-green-500/10">
-            <div className="flex items-center space-x-3 p-4">
-              <CheckCircle2 className="w-6 h-6 text-green-400" />
-              <div>
-                <h3 className="text-green-400 font-semibold">Transfer Completed Successfully!</h3>
-                <p className="text-green-300 text-sm">
-                  The funds have been transferred to the recipient's account.
-                </p>
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={handleModalClose}
+        title={modalData.title}
+        message={modalData.message}
+        actionButton={
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              onClick={handleNewTransfer}
+            >
+              New Transfer
+            </Button>
+            <Button
+              onClick={() => navigate('/history')}
+            >
+              View History
+            </Button>
+          </div>
+        }
+      >
+        {/* Transfer Details */}
+        {modalData.transferDetails && (
+          <div className="space-y-6">
+            {/* Transaction Summary */}
+            <div className="p-4 bg-gray-700 rounded-lg">
+              <h4 className="font-semibold text-white mb-3">Transaction Details</h4>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Transaction ID:</span>
+                  <div className="flex items-center space-x-2">
+                    <code className="text-white font-mono">{modalData.transactionId}</code>
+                    <button
+                      onClick={() => copyToClipboard(modalData.transactionId)}
+                      className="p-1 hover:bg-gray-600 rounded transition-colors"
+                      title="Copy Transaction ID"
+                    >
+                      <Copy className="w-3 h-3 text-gray-400" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Recipient:</span>
+                  <span className="text-white">
+                    {modalData.transferDetails.first_name} {modalData.transferDetails.last_name}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Amount:</span>
+                  <span className="text-green-400 font-semibold">
+                    {modalData.transferDetails.amount} {modalData.transferDetails.currency}
+                  </span>
+                </div>
+                {modalData.transferDetails.reference && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Reference:</span>
+                    <span className="text-white">{modalData.transferDetails.reference}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Status:</span>
+                  <span className="text-green-400 font-medium">Completed</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Time:</span>
+                  <span className="text-white">{new Date().toLocaleString()}</span>
+                </div>
               </div>
             </div>
-          </Card>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Transaction Details */}
-            <Card>
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-white">Transaction Details</h3>
-                  <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
-                    <span className="text-gray-400">Transaction ID</span>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-white font-mono text-sm">
-                        {transferData.result.transaction_id}
-                      </span>
-                      <button
-                        onClick={() => copyToClipboard(transferData.result.transaction_id)}
-                        className="p-1 hover:bg-gray-600 rounded transition-colors"
-                        title="Copy Transaction ID"
-                      >
-                        <Copy className="w-3 h-3 text-gray-400" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
-                    <span className="text-gray-400">Recipient</span>
-                    <span className="text-white">
-                      {transferData.result.first_name} {transferData.result.last_name}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
-                    <span className="text-gray-400">Amount Sent</span>
-                    <span className="text-green-400 font-bold text-lg">
-                      {transferData.result.amount} {transferData.result.currency}
-                    </span>
-                  </div>
-
-                  {transferData.result.reference && (
-                    <div className="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
-                      <span className="text-gray-400">Reference</span>
-                      <span className="text-white">{transferData.result.reference}</span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
-                    <span className="text-gray-400">Status</span>
-                    <span className="text-green-400 font-medium">Completed</span>
-                  </div>
-
-                  <div className="flex justify-between items-center p-3 bg-gray-700 rounded-lg">
-                    <span className="text-gray-400">Time</span>
-                    <span className="text-white">{new Date().toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <div className="flex space-x-3">
-                  <Button
-                    variant="outline"
-                    onClick={handleNewTransfer}
-                    className="flex-1"
-                  >
-                    New Transfer
-                  </Button>
-                  <Button
-                    onClick={() => navigate('/history')}
-                    className="flex-1"
-                  >
-                    View History
-                  </Button>
-                </div>
-              </div>
-            </Card>
 
             {/* Balance Update */}
-            <Card>
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-4">Updated Balance</h3>
-                </div>
-
-                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <div className="text-center mb-4">
-                    <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <CheckCircle2 className="w-8 h-8 text-green-400" />
-                    </div>
-                    <p className="text-gray-400 text-sm">Transfer Successful</p>
+            {modalData.balance && (
+              <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <h4 className="font-semibold text-white mb-3">Balance Update</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Previous Balance:</span>
+                    <span className="text-white">
+                      {(parseFloat(modalData.balance.balance) + parseFloat(modalData.transferDetails.amount)).toFixed(2)} {modalData.balance.currency}
+                    </span>
                   </div>
-
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-400">Previous Balance:</span>
-                      <span className="text-white">
-                        {(parseFloat(transferData.result.balance.balance) + parseFloat(transferData.result.amount)).toFixed(2)} {transferData.result.balance.currency}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-400">Amount Sent:</span>
-                      <span className="text-red-400">
-                        -{transferData.result.amount} {transferData.result.currency}
-                      </span>
-                    </div>
-                    <div className="border-t border-gray-600 pt-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-white font-medium">New Balance:</span>
-                        <span className="text-green-400 font-bold text-lg">
-                          {transferData.result.balance.balance} {transferData.result.balance.currency}
-                        </span>
-                      </div>
-                    </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Transfer Amount:</span>
+                    <span className="text-red-400">
+                      -{modalData.transferDetails.amount} {modalData.transferDetails.currency}
+                    </span>
                   </div>
-                </div>
-
-                {/* Transaction Summary */}
-                <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-                  <h4 className="text-purple-400 font-medium mb-3">Transaction Summary</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Transfer Type:</span>
-                      <span className="text-white">User to User</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Processing Time:</span>
-                      <span className="text-white">Instant</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Transaction Fee:</span>
-                      <span className="text-white">No fees</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Security Level:</span>
-                      <span className="text-green-400">High</span>
+                  <div className="border-t border-gray-600 pt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-white font-medium">New Balance:</span>
+                      <span className="text-green-400 font-bold">
+                        {modalData.balance.balance} {modalData.balance.currency}
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
-            </Card>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex space-x-3">
+              <Button
+                variant="outline"
+                onClick={downloadReceipt}
+                className="flex-1 flex items-center space-x-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download Receipt</span>
+              </Button>
+              <Button
+                onClick={handleNewTransfer}
+                className="flex-1"
+              >
+                New Transfer
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </SuccessModal>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={handleModalClose}
+        onConfirm={handleConfirmTransfer}
+        title={modalData.title}
+        message={modalData.message}
+        confirmText="Confirm Transfer"
+        cancelText="Cancel"
+        loading={loading}
+        variant="danger"
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={handleModalClose}
+        title={modalData.title}
+        message={modalData.message}
+        actionButton={
+          <Button onClick={handleModalClose}>
+            Try Again
+          </Button>
+        }
+      />
     </div>
   );
-
-  // Helper function to copy to clipboard
-  function copyToClipboard(text) {
-    navigator.clipboard.writeText(text);
-    // You could add a toast notification here
-    alert('Copied to clipboard!');
-  }
 };

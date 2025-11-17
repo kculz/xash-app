@@ -312,6 +312,7 @@ export const AuthProvider = ({ children }) => {
 
   // Electricity functions
   const checkElectricityAccount = async (accountData) => {
+    console.log(accountData)
     try {
       const response = await api.request('/electricity/check-account', {
         method: 'POST',
@@ -321,6 +322,7 @@ export const AuthProvider = ({ children }) => {
         },
         body: accountData
       });
+      console.log(response)
       return response;
     } catch (error) {
       throw error;

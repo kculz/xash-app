@@ -4,6 +4,8 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../hooks/useToast';
+import { SuccessModal, ErrorModal } from '../../components/ui/Modal';
 import { api } from '../../utils/api';
 import { 
   Smartphone, 
@@ -17,14 +19,20 @@ import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
 
 export const Airtime = () => {
-  const { token } = useAuth();
+  const { token, getWalletBalance } = useAuth();
+  const { success, error, loading: toastLoading } = useToast();
   const navigate = useNavigate();
+  
   const [activeTab, setActiveTab] = useState('direct');
   const [carriers, setCarriers] = useState([]);
   const [voucherValues, setVoucherValues] = useState([]);
   const [selectedCarrier, setSelectedCarrier] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  
+  // Modal states
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [modalData, setModalData] = useState({});
 
   // Direct airtime form state
   const [directForm, setDirectForm] = useState({
@@ -37,7 +45,8 @@ export const Airtime = () => {
   const [voucherForm, setVoucherForm] = useState({
     amount: '',
     currency: 'USD',
-    quantity: 1
+    quantity: 1,
+    is_vendor_voucher: true
   });
 
   useEffect(() => {
@@ -58,6 +67,7 @@ export const Airtime = () => {
       }
     } catch (error) {
       console.error('Failed to fetch carriers:', error);
+      error('Failed to load carriers. Please try again.');
     }
   };
 
@@ -75,13 +85,13 @@ export const Airtime = () => {
       }
     } catch (error) {
       console.error('Failed to fetch voucher values:', error);
+      error('Failed to load voucher values. Please try again.');
     }
   };
 
   const handleDirectAirtime = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
 
     try {
       const response = await api.request('/airtime/direct', {
@@ -94,12 +104,27 @@ export const Airtime = () => {
       });
 
       if (response.success) {
-        // Reset form on success
+        // Show success modal with transaction details
+        setModalData({
+          title: 'Airtime Purchase Successful!',
+          message: `Your airtime recharge of ${directForm.amount} ${directForm.currency} to ${directForm.mobile_phone} was processed successfully.`,
+          transactionId: response.data?.transaction_id || 'N/A',
+          balance: response.data?.balance
+        });
+        setShowSuccessModal(true);
+        
+        // Reset form
         setDirectForm({ mobile_phone: '', amount: '', currency: 'USD' });
-        alert('Airtime purchase successful!');
+        
+        // Refresh wallet balance
+        await getWalletBalance();
       }
     } catch (error) {
-      setError(error.message);
+      setModalData({
+        title: 'Purchase Failed',
+        message: error.message || 'There was an error processing your airtime purchase. Please try again.'
+      });
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -108,7 +133,6 @@ export const Airtime = () => {
   const handleVoucherAirtime = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
 
     try {
       const response = await api.request(`/airtime/direct/voucher/${selectedCarrier}`, {
@@ -121,13 +145,29 @@ export const Airtime = () => {
       });
 
       if (response.success) {
-        // Reset form on success
+        const selectedCarrierName = carriers.find(c => c.id === parseInt(selectedCarrier))?.name || 'Carrier';
+        
+        setModalData({
+          title: 'Voucher Purchase Successful!',
+          message: `You have successfully purchased ${voucherForm.quantity} voucher(s) for ${selectedCarrierName} with a total value of ${voucherForm.amount * voucherForm.quantity} ${voucherForm.currency}.`,
+          vouchers: response.data?.vouchers || [],
+          balance: response.data?.balance
+        });
+        setShowSuccessModal(true);
+        
+        // Reset form
         setVoucherForm({ amount: '', currency: 'USD', quantity: 1 });
         setSelectedCarrier('');
-        alert('Voucher purchase successful!');
+        
+        // Refresh wallet balance
+        await getWalletBalance();
       }
     } catch (error) {
-      setError(error.message);
+      setModalData({
+        title: 'Purchase Failed',
+        message: error.message || 'There was an error processing your voucher purchase. Please try again.'
+      });
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -136,6 +176,18 @@ export const Airtime = () => {
   const handleCarrierChange = (carrierId) => {
     setSelectedCarrier(carrierId);
     fetchVoucherValues(carrierId);
+  };
+
+  const handleNewPurchase = () => {
+    setShowSuccessModal(false);
+    setShowErrorModal(false);
+    setModalData({});
+  };
+
+  const handleModalClose = () => {
+    setShowSuccessModal(false);
+    setShowErrorModal(false);
+    setModalData({});
   };
 
   return (
@@ -186,15 +238,6 @@ export const Airtime = () => {
           </button>
         </div>
       </Card>
-
-      {error && (
-        <Card className="mb-6 border-red-500/20 bg-red-500/10">
-          <div className="flex items-center space-x-3 p-4">
-            <AlertCircle className="w-5 h-5 text-red-400" />
-            <p className="text-red-400">{error}</p>
-          </div>
-        </Card>
-      )}
 
       {/* Direct Airtime Form */}
       {activeTab === 'direct' && (
@@ -355,6 +398,42 @@ export const Airtime = () => {
           </form>
         </Card>
       )}
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={handleModalClose}
+        title={modalData.title}
+        message={modalData.message}
+        actionButton={
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              onClick={handleNewPurchase}
+            >
+              Buy More Airtime
+            </Button>
+            <Button
+              onClick={() => navigate('/payments')}
+            >
+              Back to Payments
+            </Button>
+          </div>
+        }
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={handleModalClose}
+        title={modalData.title}
+        message={modalData.message}
+        actionButton={
+          <Button onClick={handleModalClose}>
+            Try Again
+          </Button>
+        }
+      />
     </div>
   );
 };

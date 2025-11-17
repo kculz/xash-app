@@ -4,6 +4,8 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../hooks/useToast';
+import { SuccessModal, ErrorModal } from '../../components/ui/Modal';
 import { api } from '../../utils/api';
 import { 
   Wifi, 
@@ -13,19 +15,27 @@ import {
   CheckCircle2,
   AlertCircle,
   Filter,
-  DollarSign
+  DollarSign,
+  Copy
 } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
 
 export const Bundles = () => {
-  const { token } = useAuth();
+  const { token, getWalletBalance } = useAuth();
+  const { success, error, loading: toastLoading } = useToast();
   const navigate = useNavigate();
+  
   const [activeTab, setActiveTab] = useState('direct');
   const [bundles, setBundles] = useState([]);
   const [filteredBundles, setFilteredBundles] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  
+  // Modal states
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [modalData, setModalData] = useState({});
+
   const [filters, setFilters] = useState({
     currency: '',
     network: ''
@@ -66,7 +76,7 @@ export const Bundles = () => {
       }
     } catch (error) {
       console.error('Failed to fetch bundles:', error);
-      setError('Failed to load bundles');
+      error('Failed to load bundles. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -89,7 +99,6 @@ export const Bundles = () => {
   const handleDirectBundle = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
 
     try {
       const selectedBundle = bundles.find(b => b.id === parseInt(directForm.bundle));
@@ -106,11 +115,34 @@ export const Bundles = () => {
       });
 
       if (response.success) {
+        // Show success modal with transaction details
+        setModalData({
+          title: 'Bundle Purchase Successful!',
+          message: `Your ${selectedBundle?.name} bundle has been successfully applied to ${directForm.mobile_phone}.`,
+          transactionId: response.data?.transaction_id || 'N/A',
+          balance: response.data?.balance,
+          bundleDetails: {
+            name: selectedBundle?.name,
+            description: selectedBundle?.description,
+            price: selectedBundle?.price,
+            currency: selectedBundle?.currency,
+            validFor: formatValidFor(selectedBundle?.valid_for)
+          }
+        });
+        setShowSuccessModal(true);
+        
+        // Reset form
         setDirectForm({ mobile_phone: '', bundle: '' });
-        alert(`${selectedBundle?.name} bundle purchased successfully!`);
+        
+        // Refresh wallet balance
+        await getWalletBalance();
       }
     } catch (error) {
-      setError(error.message);
+      setModalData({
+        title: 'Purchase Failed',
+        message: error.message || 'There was an error processing your bundle purchase. Please try again.'
+      });
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -119,7 +151,6 @@ export const Bundles = () => {
   const handleVoucherBundle = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
 
     try {
       const selectedBundle = bundles.find(b => b.id === parseInt(voucherForm.bundle));
@@ -136,11 +167,36 @@ export const Bundles = () => {
       });
 
       if (response.success) {
+        const vouchers = response.data?.vouchers || [];
+        
+        setModalData({
+          title: 'Bundle Vouchers Purchased!',
+          message: `You have successfully purchased ${voucherForm.quantity} ${selectedBundle?.name} voucher(s).`,
+          vouchers: vouchers,
+          balance: response.data?.balance,
+          bundleDetails: {
+            name: selectedBundle?.name,
+            description: selectedBundle?.description,
+            price: selectedBundle?.price,
+            currency: selectedBundle?.currency,
+            quantity: voucherForm.quantity,
+            totalCost: (selectedBundle?.price * voucherForm.quantity).toFixed(2)
+          }
+        });
+        setShowSuccessModal(true);
+        
+        // Reset form
         setVoucherForm({ bundle: '', quantity: 1 });
-        alert(`${voucherForm.quantity} ${selectedBundle?.name} voucher(s) purchased successfully!`);
+        
+        // Refresh wallet balance
+        await getWalletBalance();
       }
     } catch (error) {
-      setError(error.message);
+      setModalData({
+        title: 'Purchase Failed',
+        message: error.message || 'There was an error processing your voucher purchase. Please try again.'
+      });
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -155,10 +211,29 @@ export const Bundles = () => {
   };
 
   const formatValidFor = (days) => {
+    if (!days) return 'N/A';
     if (days === 1) return '1 day';
     if (days <= 7) return `${days} days`;
     if (days <= 30) return `${Math.ceil(days / 7)} week${Math.ceil(days / 7) > 1 ? 's' : ''}`;
     return `${Math.ceil(days / 30)} month${Math.ceil(days / 30) > 1 ? 's' : ''}`;
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      success('Copied to clipboard!');
+    });
+  };
+
+  const handleNewPurchase = () => {
+    setShowSuccessModal(false);
+    setShowErrorModal(false);
+    setModalData({});
+  };
+
+  const handleModalClose = () => {
+    setShowSuccessModal(false);
+    setShowErrorModal(false);
+    setModalData({});
   };
 
   return (
@@ -209,15 +284,6 @@ export const Bundles = () => {
           </button>
         </div>
       </Card>
-
-      {error && (
-        <Card className="mb-6 border-red-500/20 bg-red-500/10">
-          <div className="flex items-center space-x-3 p-4">
-            <AlertCircle className="w-5 h-5 text-red-400" />
-            <p className="text-red-400">{error}</p>
-          </div>
-        </Card>
-      )}
 
       {/* Filters */}
       <Card className="mb-6">
@@ -362,6 +428,10 @@ export const Bundles = () => {
                               </span>
                             </div>
                             <p className="text-gray-400 text-sm">{selected.description}</p>
+                            <div className="flex justify-between items-center text-xs text-gray-500 mt-2">
+                              <span>{selected.network}</span>
+                              <span>Valid for {formatValidFor(selected.valid_for)}</span>
+                            </div>
                           </div>
                         ) : (
                           <span className="text-gray-400">No bundle selected</span>
@@ -467,6 +537,10 @@ export const Bundles = () => {
                               </span>
                             </div>
                             <p className="text-gray-400 text-sm">{selected.description}</p>
+                            <div className="flex justify-between items-center text-xs text-gray-500 mt-2">
+                              <span>{selected.network}</span>
+                              <span>Valid for {formatValidFor(selected.valid_for)}</span>
+                            </div>
                           </div>
                         ) : (
                           <span className="text-gray-400">No bundle selected</span>
@@ -521,6 +595,111 @@ export const Bundles = () => {
           </Card>
         </div>
       )}
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={handleModalClose}
+        title={modalData.title}
+        message={modalData.message}
+        actionButton={
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              onClick={handleNewPurchase}
+            >
+              Buy More Bundles
+            </Button>
+            <Button
+              onClick={() => navigate('/payments')}
+            >
+              Back to Payments
+            </Button>
+          </div>
+        }
+      >
+        {/* Additional success details */}
+        {modalData.bundleDetails && (
+          <div className="mt-6 p-4 bg-gray-700 rounded-lg">
+            <h4 className="font-semibold text-white mb-3">Purchase Details</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Bundle:</span>
+                <span className="text-white">{modalData.bundleDetails.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Description:</span>
+                <span className="text-white text-right">{modalData.bundleDetails.description}</span>
+              </div>
+              {modalData.bundleDetails.quantity && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Quantity:</span>
+                  <span className="text-white">{modalData.bundleDetails.quantity}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-gray-400">Total Amount:</span>
+                <span className="text-green-400 font-semibold">
+                  {modalData.bundleDetails.totalCost || modalData.bundleDetails.price} {modalData.bundleDetails.currency}
+                </span>
+              </div>
+              {modalData.balance && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">New Balance:</span>
+                  <span className="text-white">{modalData.balance} {modalData.bundleDetails.currency}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Voucher codes */}
+        {modalData.vouchers && modalData.vouchers.length > 0 && (
+          <div className="mt-6">
+            <h4 className="font-semibold text-white mb-3">Your Voucher Codes</h4>
+            <div className="space-y-2">
+              {modalData.vouchers.map((voucher, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                  <code className="text-white font-mono">{voucher.code}</code>
+                  <button
+                    onClick={() => copyToClipboard(voucher.code)}
+                    className="p-1 text-gray-400 hover:text-white transition-colors"
+                    title="Copy to clipboard"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <p className="text-gray-400 text-sm mt-2">
+              Click the copy icon to save your voucher codes
+            </p>
+          </div>
+        )}
+
+        {/* Transaction ID */}
+        {modalData.transactionId && (
+          <div className="mt-4 p-3 bg-gray-700 rounded-lg">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400 text-sm">Transaction ID:</span>
+              <code className="text-white text-sm font-mono">{modalData.transactionId}</code>
+            </div>
+          </div>
+        )}
+      </SuccessModal>
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={handleModalClose}
+        title={modalData.title}
+        message={modalData.message}
+        actionButton={
+          <Button onClick={handleModalClose}>
+            Try Again
+          </Button>
+        }
+      />
     </div>
   );
 };
