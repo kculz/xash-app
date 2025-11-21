@@ -282,41 +282,6 @@ export const Wallet = () => {
           </div>
         )}
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* <Card className="p-6 hover:bg-gray-750 transition-colors duration-200 cursor-pointer group">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
-                <Download className="w-6 h-6 text-green-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-green-300 transition-colors">
-                  Deposit Funds
-                </h3>
-                <p className="text-gray-400 text-sm">
-                  Add money to your wallet from your bank account
-                </p>
-              </div>
-            </div>
-          </Card> */}
-
-          <Card className="p-6 hover:bg-gray-750 transition-colors duration-200 cursor-pointer group">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
-                <Upload className="w-6 h-6 text-blue-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-blue-300 transition-colors">
-                  Withdraw Funds
-                </h3>
-                <p className="text-gray-400 text-sm">
-                  Transfer money from your wallet to your bank account
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
         {/* Account Breakdown */}
         {walletData.rawData && (
           <Card className="p-6">
