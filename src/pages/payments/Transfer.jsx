@@ -42,7 +42,7 @@ export const Transfer = () => {
   // Transfer form state
   const [transferForm, setTransferForm] = useState({
     currency: 'USD',
-    amount: '',
+    amount: Number(''),
     recipient: '',
     reference: ''
   });

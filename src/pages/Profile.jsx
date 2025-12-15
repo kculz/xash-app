@@ -503,12 +503,12 @@ export const Profile = () => {
                       </p>
                       <div className="flex items-center space-x-2">
                         <code className="flex-1 p-2 bg-gray-800 rounded text-xs text-gray-300 font-mono">
-                          https://dev.xash.co.zw/api/v1/
+                          {import.meta.env.VITE_API_BASE_URL}
                         </code>
                         <button
                           onClick={async () => {
                             try {
-                              await navigator.clipboard.writeText('https://dev.xash.co.zw/api/v1/');
+                              await navigator.clipboard.writeText(import.meta.env.VITE_API_BASE_URL);
                               setCopied(true);
                               setTimeout(() => setCopied(false), 2000);
                             } catch (error) {
