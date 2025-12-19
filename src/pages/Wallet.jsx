@@ -15,7 +15,8 @@ import {
   Upload,
   RefreshCw,
   Eye,
-  EyeOff
+  EyeOff,
+  Plus
 } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 
@@ -198,6 +199,14 @@ export const Wallet = () => {
           
           <div className="flex items-center space-x-3">
             <Button
+              onClick={() => navigate('/fund')}
+              className="flex items-center space-x-2 bg-green-500 hover:bg-green-600"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Funds</span>
+            </Button>
+
+            <Button
               variant="outline"
               onClick={() => setShowBalances(!showBalances)}
               className="flex items-center space-x-2"
@@ -217,6 +226,28 @@ export const Wallet = () => {
             </Button>
           </div>
         </div>
+
+        {/* Quick Actions Banner */}
+        <Card className="p-4 mb-8 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/50">
+          <div className="flex flex-col sm:flex-row items-center justify-between">
+            <div className="flex items-center space-x-3 mb-3 sm:mb-0">
+              <div className="p-2 bg-blue-500/20 rounded-lg">
+                <Upload className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">Need to add funds?</h3>
+                <p className="text-gray-400 text-sm">Deposit money using EcoCash or InnBucks</p>
+              </div>
+            </div>
+            <Button
+              onClick={() => navigate('/fund')}
+              className="bg-blue-500 hover:bg-blue-600 flex items-center space-x-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Funds Now</span>
+            </Button>
+          </div>
+        </Card>
 
         {/* Main Balance Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

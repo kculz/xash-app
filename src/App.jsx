@@ -21,6 +21,11 @@ import { Bundles } from './pages/payments/Bundles';
 import { Electricity } from './pages/payments/Electricity';
 import { Transfer } from './pages/payments/Transfer';
 
+// Fund Pages
+import { Fund } from './pages/fund/Fund';
+import { EcoCash } from './pages/fund/Ecocash';
+import { InnBucks } from './pages/fund/InnBucks';
+
 const AppRoutes = () => {
   const { token, user, loading } = useAuth();
   const [authFlow, setAuthFlow] = useState({
@@ -67,6 +72,11 @@ const AppRoutes = () => {
           <Route path="/payments/bundles" element={<Bundles />} />
           <Route path="/payments/electricity" element={<Electricity />} />
           <Route path="/payments/transfer" element={<Transfer />} />
+
+           {/* Fund Routes */}
+          <Route path="/fund" element={<Fund />} />
+          <Route path="/fund/ecocash" element={<EcoCash />} />
+          <Route path="/fund/innbucks" element={<InnBucks />} />
           
           {/* Fallback route */}
           <Route path="*" element={<Navigate to="/" replace />} />

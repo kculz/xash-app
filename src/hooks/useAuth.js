@@ -194,6 +194,54 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Deposit functions
+  const depositEcoCash = async (depositData) => {
+    try {
+      const response = await api.request('/ecocash/pay', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: depositData
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const depositInnBucks = async (depositData) => {
+    try {
+      const response = await api.request('/innbucks/pay', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: depositData
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Check deposit status (polling)
+  const checkDepositStatus = async (method, depositId) => {
+    try {
+      const response = await api.request(`/${method}/poll/${depositId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
   // Airtime functions
   const getAirtimeCarriers = async () => {
     try {
@@ -424,6 +472,11 @@ export const AuthProvider = ({ children }) => {
     
     // Wallet functions
     getWalletBalance,
+    
+    // Deposit functions
+    depositEcoCash,
+    depositInnBucks,
+    checkDepositStatus,
     
     // Airtime functions
     getAirtimeCarriers,
