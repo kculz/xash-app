@@ -100,14 +100,17 @@ export const Airtime = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: directForm
+        body: {
+          ...directForm,
+          currency: 'USD' // Always USD
+        }
       });
 
       if (response.success) {
         // Show success modal with transaction details
         setModalData({
           title: 'Airtime Purchase Successful!',
-          message: `Your airtime recharge of ${directForm.amount} ${directForm.currency} to ${directForm.mobile_phone} was processed successfully.`,
+          message: `Your airtime recharge of ${directForm.amount} USD to ${directForm.mobile_phone} was processed successfully.`,
           transactionId: response.data?.transaction_id || 'N/A',
           balance: response.data?.balance
         });
@@ -141,7 +144,10 @@ export const Airtime = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: voucherForm
+        body: {
+          ...voucherForm,
+          currency: 'USD' // Always USD
+        }
       });
 
       if (response.success) {
@@ -149,7 +155,7 @@ export const Airtime = () => {
         
         setModalData({
           title: 'Voucher Purchase Successful!',
-          message: `You have successfully purchased ${voucherForm.quantity} voucher(s) for ${selectedCarrierName} with a total value of ${voucherForm.amount * voucherForm.quantity} ${voucherForm.currency}.`,
+          message: `You have successfully purchased ${voucherForm.quantity} voucher(s) for ${selectedCarrierName} with a total value of ${voucherForm.amount * voucherForm.quantity} USD.`,
           vouchers: response.data?.vouchers || [],
           balance: response.data?.balance
         });
@@ -208,7 +214,7 @@ export const Airtime = () => {
           <Smartphone className="w-8 h-8 text-green-400" />
           <div>
             <h1 className="text-2xl font-bold text-white">Buy Airtime</h1>
-            <p className="text-gray-400">Recharge any mobile number instantly</p>
+            <p className="text-gray-400">Recharge any mobile number instantly (USD only)</p>
           </div>
         </div>
       </div>
@@ -246,7 +252,7 @@ export const Airtime = () => {
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-white mb-4">Direct Airtime Recharge</h3>
-                <p className="text-gray-400 mb-6">Recharge any mobile number instantly</p>
+                <p className="text-gray-400 mb-6">Recharge any mobile number instantly (USD only)</p>
               </div>
 
               <Input
@@ -258,29 +264,25 @@ export const Airtime = () => {
                 required
               />
 
-              <Input
-                label="Amount"
-                type="number"
-                placeholder="10.00"
-                value={directForm.amount}
-                onChange={(e) => setDirectForm({ ...directForm, amount: e.target.value })}
-                required
-                min="0.50"
-                step="0.01"
-              />
-
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Currency
+                  Amount (USD)
                 </label>
-                <select
-                  value={directForm.currency}
-                  onChange={(e) => setDirectForm({ ...directForm, currency: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value="USD">USD</option>
-                  <option value="ZWL">ZWL</option>
-                </select>
+                <div className="relative">
+                  <input
+                    type="number"
+                    placeholder="10.00"
+                    value={directForm.amount}
+                    onChange={(e) => setDirectForm({ ...directForm, amount: e.target.value })}
+                    required
+                    min="0.50"
+                    step="0.01"
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 pr-12"
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <span className="text-gray-400">USD</span>
+                  </div>
+                </div>
               </div>
 
               <Button
@@ -303,7 +305,7 @@ export const Airtime = () => {
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-white mb-4">Buy Airtime Voucher</h3>
-                <p className="text-gray-400 mb-6">Purchase airtime vouchers for later use</p>
+                <p className="text-gray-400 mb-6">Purchase airtime vouchers for later use (USD only)</p>
               </div>
 
               <div>
@@ -331,7 +333,7 @@ export const Airtime = () => {
               {voucherValues.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Select Amount
+                    Select Amount (USD)
                   </label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {voucherValues.map((value, index) => (
@@ -352,15 +354,25 @@ export const Airtime = () => {
                 </div>
               )}
 
-              <Input
-                label="Custom Amount"
-                type="number"
-                placeholder="Enter custom amount"
-                value={voucherForm.amount}
-                onChange={(e) => setVoucherForm({ ...voucherForm, amount: e.target.value })}
-                min="0.50"
-                step="0.01"
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Custom Amount (USD)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    placeholder="Enter custom amount"
+                    value={voucherForm.amount}
+                    onChange={(e) => setVoucherForm({ ...voucherForm, amount: e.target.value })}
+                    min="0.50"
+                    step="0.01"
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 pr-12"
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <span className="text-gray-400">USD</span>
+                  </div>
+                </div>
+              </div>
 
               <Input
                 label="Quantity"
@@ -371,20 +383,6 @@ export const Airtime = () => {
                 required
                 min="1"
               />
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Currency
-                </label>
-                <select
-                  value={voucherForm.currency}
-                  onChange={(e) => setVoucherForm({ ...voucherForm, currency: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                >
-                  <option value="USD">USD</option>
-                  <option value="ZWL">ZWL</option>
-                </select>
-              </div>
 
               <Button
                 type="submit"

@@ -17,7 +17,8 @@ import {
   Copy,
   Shield,
   ArrowRightLeft,
-  Download
+  Download,
+  DollarSign
 } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
@@ -41,7 +42,7 @@ export const Transfer = () => {
 
   // Transfer form state
   const [transferForm, setTransferForm] = useState({
-    currency: 'USD',
+    currency: 'USD', // Always USD
     amount: Number(''),
     recipient: '',
     reference: ''
@@ -61,10 +62,11 @@ export const Transfer = () => {
       });
       
       if (response.success && response.data && response.data.length > 0) {
-        const wallet = response.data[0];
+        // Find USD wallet or use first wallet
+        const usdWallet = response.data.find(w => w.currency === 'USD') || response.data[0];
         setWalletBalance({
-          balance: parseFloat(wallet.value) || 0,
-          currency: wallet.currency || 'USD'
+          balance: parseFloat(usdWallet.value) || 0,
+          currency: usdWallet.currency || 'USD'
         });
       }
     } catch (error) {
@@ -83,7 +85,10 @@ export const Transfer = () => {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: transferForm
+        body: {
+          ...transferForm,
+          currency: 'USD' // Always USD
+        }
       });
 
       if (response.success) {
@@ -122,7 +127,7 @@ export const Transfer = () => {
         // Show success modal
         setModalData({
           title: 'Transfer Successful!',
-          message: `Your transfer of ${result.amount} ${result.currency} to ${result.first_name} ${result.last_name} was completed successfully.`,
+          message: `Your transfer of $${result.amount} to ${result.first_name} ${result.last_name} was completed successfully.`,
           transferDetails: result,
           balance: result.balance,
           transactionId: result.transaction_id
@@ -147,7 +152,7 @@ export const Transfer = () => {
   const showConfirmationModal = () => {
     setModalData({
       title: 'Confirm Transfer',
-      message: `Are you sure you want to transfer ${transferData.amount} ${transferData.currency} to ${transferData.first_name} ${transferData.last_name}? This action cannot be undone.`,
+      message: `Are you sure you want to transfer $${transferData.amount} to ${transferData.first_name} ${transferData.last_name}? This action cannot be undone.`,
       transferDetails: transferData
     });
     setShowConfirmModal(true);
@@ -203,6 +208,7 @@ Transfer Details:
 -----------------
 Transaction ID: ${modalData.transactionId}
 Date: ${new Date().toLocaleString()}
+Currency: USD
 
 From:
 -----
@@ -215,14 +221,14 @@ User Number: ${modalData.transferDetails?.recipient}
 
 Amount:
 -------
-Transfer Amount: ${modalData.transferDetails?.amount} ${modalData.transferDetails?.currency}
+Transfer Amount: $${modalData.transferDetails?.amount}
 Reference: ${modalData.transferDetails?.reference || 'N/A'}
 
 Balance Update:
 ---------------
-Previous Balance: ${(parseFloat(modalData.balance?.balance) + parseFloat(modalData.transferDetails?.amount)).toFixed(2)} ${modalData.balance?.currency}
-Transfer Amount: -${modalData.transferDetails?.amount} ${modalData.transferDetails?.currency}
-New Balance: ${modalData.balance?.balance} ${modalData.balance?.currency}
+Previous Balance: $${(parseFloat(modalData.balance?.balance) + parseFloat(modalData.transferDetails?.amount)).toFixed(2)}
+Transfer Amount: -$${modalData.transferDetails?.amount}
+New Balance: $${modalData.balance?.balance}
 
 Status: COMPLETED
 Processing: Instant
@@ -262,7 +268,7 @@ Thank you for using Xash!
           <Send className="w-8 h-8 text-purple-400" />
           <div>
             <h1 className="text-2xl font-bold text-white">Transfer Credit</h1>
-            <p className="text-gray-400">Send money to other Xash users</p>
+            <p className="text-gray-400">Send money to other Xash users (USD only)</p>
           </div>
         </div>
       </div>
@@ -276,13 +282,13 @@ Thank you for using Xash!
                 <ArrowRightLeft className="w-5 h-5 text-purple-400" />
               </div>
               <div>
-                <h3 className="text-white font-semibold">Available Balance</h3>
-                <p className="text-gray-400 text-sm">Current wallet balance</p>
+                <h3 className="text-white font-semibold">Available Balance (USD)</h3>
+                <p className="text-gray-400 text-sm">Current wallet balance for transfers</p>
               </div>
             </div>
             <div className="text-right">
               <p className="text-2xl font-bold text-white">
-                {getAvailableBalance().toFixed(2)} {getCurrency()}
+                ${getAvailableBalance().toFixed(2)}
               </p>
               <p className="text-green-400 text-sm">Ready to transfer</p>
             </div>
@@ -300,7 +306,7 @@ Thank you for using Xash!
                 <div>
                   <h3 className="text-lg font-semibold text-white mb-4">Transfer Funds</h3>
                   <p className="text-gray-400 mb-6">
-                    Send money securely to another Xash user
+                    Send money securely to another Xash user (USD only)
                   </p>
                 </div>
 
@@ -313,32 +319,26 @@ Thank you for using Xash!
                   required
                 />
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Currency
-                    </label>
-                    <select
-                      value={transferForm.currency}
-                      onChange={(e) => setTransferForm({ ...transferForm, currency: e.target.value })}
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Amount (USD)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      placeholder="0.00"
+                      value={transferForm.amount}
+                      onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })}
                       required
-                    >
-                      <option value="USD">USD</option>
-                      <option value="ZWL">ZWL</option>
-                    </select>
+                      min="0.10"
+                      step="0.01"
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 pr-12"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <span className="text-gray-400">USD</span>
+                    </div>
                   </div>
-
-                  <Input
-                    label="Amount"
-                    type="number"
-                    placeholder="0.00"
-                    value={transferForm.amount}
-                    onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })}
-                    required
-                    min="0.10"
-                    step="0.01"
-                  />
+                  <p className="text-gray-400 text-xs mt-1">Minimum transfer: $0.10</p>
                 </div>
 
                 <Input
@@ -355,15 +355,21 @@ Thank you for using Xash!
                   <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-gray-400">Transfer Amount:</span>
-                      <span className="text-white font-bold text-lg">
-                        {transferForm.amount} {transferForm.currency}
-                      </span>
+                      <div className="flex items-center">
+                        <DollarSign className="w-4 h-4 text-green-400 mr-1" />
+                        <span className="text-white font-bold text-lg">
+                          {transferForm.amount}
+                        </span>
+                      </div>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-400">Available Balance:</span>
-                      <span className={parseFloat(transferForm.amount) > getAvailableBalance() ? 'text-red-400' : 'text-green-400'}>
-                        {getAvailableBalance().toFixed(2)} {getCurrency()}
-                      </span>
+                      <div className="flex items-center">
+                        <DollarSign className="w-3 h-3 text-green-400 mr-1" />
+                        <span className={parseFloat(transferForm.amount) > getAvailableBalance() ? 'text-red-400' : 'text-green-400'}>
+                          {getAvailableBalance().toFixed(2)}
+                        </span>
+                      </div>
                     </div>
                     {parseFloat(transferForm.amount) > getAvailableBalance() && (
                       <p className="text-red-400 text-sm mt-2">
@@ -394,7 +400,7 @@ Thank you for using Xash!
           <Card>
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-white mb-4">Secure Transfer</h3>
+                <h3 className="text-lg font-semibold text-white mb-4">Secure Transfer (USD)</h3>
               </div>
 
               <div className="space-y-4">
@@ -405,7 +411,7 @@ Thank you for using Xash!
                   <div>
                     <h4 className="text-white font-medium mb-1">Initiate Transfer</h4>
                     <p className="text-gray-400 text-sm">
-                      Enter recipient details and amount. The system will verify the recipient.
+                      Enter recipient details and USD amount. The system will verify the recipient.
                     </p>
                   </div>
                 </div>
@@ -429,10 +435,32 @@ Thank you for using Xash!
                   <div>
                     <h4 className="text-white font-medium mb-1">Instant Transfer</h4>
                     <p className="text-gray-400 text-sm">
-                      Funds are transferred instantly to the recipient's account.
+                      USD funds are transferred instantly to the recipient's account.
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* Currency Information */}
+              <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <div className="flex items-center space-x-3 mb-3">
+                  <DollarSign className="w-5 h-5 text-blue-400" />
+                  <h4 className="text-blue-400 font-medium">USD Transfers Only</h4>
+                </div>
+                <ul className="text-blue-300 text-sm space-y-2">
+                  <li className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>All transfers are in US Dollars (USD)</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>No currency conversion fees</span>
+                  </li>
+                  <li className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Instant settlement</span>
+                  </li>
+                </ul>
               </div>
 
               {/* Security Features */}
@@ -470,8 +498,9 @@ Thank you for using Xash!
                     <ul className="text-yellow-300 text-sm space-y-1">
                       <li>• Transfers are instant and cannot be reversed</li>
                       <li>• Double-check recipient details before confirming</li>
-                      <li>• Ensure you have sufficient balance</li>
+                      <li>• Ensure you have sufficient USD balance</li>
                       <li>• Keep transaction references for your records</li>
+                      <li>• Minimum transfer amount: $0.10</li>
                     </ul>
                   </div>
                 </div>
@@ -514,10 +543,13 @@ Thank you for using Xash!
                 </div>
 
                 <div className="flex justify-between items-center p-4 bg-gray-700 rounded-lg">
-                  <span className="text-gray-400">Amount</span>
-                  <span className="text-green-400 font-bold text-xl">
-                    {transferData.amount} {transferData.currency}
-                  </span>
+                  <span className="text-gray-400">Amount (USD)</span>
+                  <div className="flex items-center">
+                    <DollarSign className="w-5 h-5 text-green-400 mr-2" />
+                    <span className="text-green-400 font-bold text-xl">
+                      {transferData.amount}
+                    </span>
+                  </div>
                 </div>
 
                 {transferData.reference && (
@@ -586,6 +618,14 @@ Thank you for using Xash!
                   <span className="text-green-400 text-sm">✓</span>
                 </div>
 
+                <div className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-400" />
+                    <span className="text-white">USD Transfer</span>
+                  </div>
+                  <span className="text-green-400 text-sm">✓</span>
+                </div>
+
                 <div className="flex items-center justify-between p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <Clock className="w-5 h-5 text-blue-400" />
@@ -611,12 +651,16 @@ Thank you for using Xash!
                   <div className="flex justify-between">
                     <span className="text-gray-400">Amount:</span>
                     <span className="text-green-400 font-medium">
-                      {transferData.amount} {transferData.currency}
+                      ${transferData.amount} USD
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Fee:</span>
                     <span className="text-white">No fees</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Currency:</span>
+                    <span className="text-white">USD (US Dollars)</span>
                   </div>
                 </div>
               </div>
@@ -687,9 +731,12 @@ Thank you for using Xash!
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Amount:</span>
-                  <span className="text-green-400 font-semibold">
-                    {modalData.transferDetails.amount} {modalData.transferDetails.currency}
-                  </span>
+                  <div className="flex items-center">
+                    <DollarSign className="w-4 h-4 text-green-400 mr-1" />
+                    <span className="text-green-400 font-semibold">
+                      {modalData.transferDetails.amount} USD
+                    </span>
+                  </div>
                 </div>
                 {modalData.transferDetails.reference && (
                   <div className="flex justify-between">
@@ -711,26 +758,35 @@ Thank you for using Xash!
             {/* Balance Update */}
             {modalData.balance && (
               <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                <h4 className="font-semibold text-white mb-3">Balance Update</h4>
+                <h4 className="font-semibold text-white mb-3">Balance Update (USD)</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Previous Balance:</span>
-                    <span className="text-white">
-                      {(parseFloat(modalData.balance.balance) + parseFloat(modalData.transferDetails.amount)).toFixed(2)} {modalData.balance.currency}
-                    </span>
+                    <div className="flex items-center">
+                      <DollarSign className="w-3 h-3 text-white mr-1" />
+                      <span className="text-white">
+                        {(parseFloat(modalData.balance.balance) + parseFloat(modalData.transferDetails.amount)).toFixed(2)}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Transfer Amount:</span>
-                    <span className="text-red-400">
-                      -{modalData.transferDetails.amount} {modalData.transferDetails.currency}
-                    </span>
+                    <div className="flex items-center">
+                      <DollarSign className="w-3 h-3 text-red-400 mr-1" />
+                      <span className="text-red-400">
+                        -{modalData.transferDetails.amount}
+                      </span>
+                    </div>
                   </div>
                   <div className="border-t border-gray-600 pt-2">
                     <div className="flex justify-between items-center">
                       <span className="text-white font-medium">New Balance:</span>
-                      <span className="text-green-400 font-bold">
-                        {modalData.balance.balance} {modalData.balance.currency}
-                      </span>
+                      <div className="flex items-center">
+                        <DollarSign className="w-4 h-4 text-green-400 mr-1" />
+                        <span className="text-green-400 font-bold">
+                          {modalData.balance.balance}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

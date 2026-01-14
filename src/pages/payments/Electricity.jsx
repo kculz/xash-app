@@ -52,7 +52,7 @@ export const Electricity = () => {
       const accountData = {
         meter_number: checkForm.meter_number,
         amount: checkForm.amount,
-        currency: checkForm.currency
+        currency: 'USD' // Always USD
       };
 
       const response = await checkElectricityAccount(accountData);
@@ -82,7 +82,7 @@ export const Electricity = () => {
       const tokenData = {
         meter_number: checkForm.meter_number,
         amount: checkForm.amount,
-        currency: checkForm.currency
+        currency: 'USD' // Always USD
       };
 
       const response = await buyElectricityTokens(tokenData);
@@ -129,15 +129,15 @@ export const Electricity = () => {
     setModalData({});
   };
 
-    const copyToClipboard = (text) => {
+  const copyToClipboard = (text) => {
     // Remove spaces when copying (use raw token)
     const rawToken = text.replace(/\s/g, '');
     navigator.clipboard.writeText(rawToken).then(() => {
         success('Token copied to clipboard!');
     });
-    };
+  };
 
-    const copyAllTokens = () => {
+  const copyAllTokens = () => {
     const allTokens = modalData.purchaseDetails?.tokens?.map(token => 
         token.token // Use the raw token without spaces
     ).join('\n');
@@ -146,17 +146,17 @@ export const Electricity = () => {
         success('All tokens copied to clipboard!');
         });
     }
-    };
+  };
 
-    const formatToken = (token) => {
+  const formatToken = (token) => {
     // Fallback formatting if API doesn't provide formatted token
     return token.replace(/(.{4})/g, '$1 ').trim();
-    };
+  };
 
   const downloadReceipt = () => {
-  if (!modalData.purchaseDetails) return;
+    if (!modalData.purchaseDetails) return;
 
-  const receiptContent = `
+    const receiptContent = `
 ZESA ELECTRICITY TOKEN RECEIPT
 ===============================
 
@@ -176,7 +176,7 @@ Meter Currency: ${modalData.purchaseDetails.meter_currency}
 
 Purchase Summary:
 ----------------
-Amount Paid: ${modalData.purchaseDetails.amount} ${modalData.purchaseDetails.currency}
+Amount Paid: ${modalData.purchaseDetails.amount} USD
 Tendered: ${modalData.purchaseDetails.tendered}
 Total Units: ${modalData.purchaseDetails.kwh} kWh
 Total Amount: ${modalData.purchaseDetails.total_amt}
@@ -209,20 +209,21 @@ New Balance: ${modalData.purchaseDetails.balance?.balance} ${modalData.purchaseD
 Commission: ${modalData.purchaseDetails.commission}
 
 ${modalData.purchaseDetails.receipt_footer || 'Thank you for using Xash!'}
-  `.trim();
+    `.trim();
 
-  const blob = new Blob([receiptContent], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `zesa-token-${modalData.purchaseDetails.meter_number}-${Date.now()}.txt`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  
-  success('Receipt downloaded successfully!');
-};
+    const blob = new Blob([receiptContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `zesa-token-${modalData.purchaseDetails.meter_number}-${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    success('Receipt downloaded successfully!');
+  };
+
   // Helper function to get estimated units based on amount
   const getEstimatedUnits = (amount) => {
     if (!amount || isNaN(amount)) return '0 kWh';
@@ -249,7 +250,7 @@ ${modalData.purchaseDetails.receipt_footer || 'Thank you for using Xash!'}
           <Zap className="w-8 h-8 text-yellow-400" />
           <div>
             <h1 className="text-2xl font-bold text-white">Buy Electricity Tokens</h1>
-            <p className="text-gray-400">ZESA token purchases</p>
+            <p className="text-gray-400">ZESA token purchases (USD only)</p>
           </div>
         </div>
       </div>
@@ -264,7 +265,7 @@ ${modalData.purchaseDetails.receipt_footer || 'Thank you for using Xash!'}
                 <div>
                   <h3 className="text-lg font-semibold text-white mb-4">Step 1: Verify ZESA Account</h3>
                   <p className="text-gray-400 mb-6">
-                    Enter your meter details and purchase amount to verify your account
+                    Enter your meter details and purchase amount in USD
                   </p>
                 </div>
 
@@ -277,32 +278,27 @@ ${modalData.purchaseDetails.receipt_footer || 'Thank you for using Xash!'}
                   required
                 />
 
-                <Input
-                  label="Amount"
-                  type="number"
-                  placeholder="10.00"
-                  value={checkForm.amount}
-                  onChange={(e) => setCheckForm({ ...checkForm, amount: e.target.value })}
-                  required
-                  min="1"
-                  step="0.01"
-                />
-
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Currency
+                    Amount (USD)
                   </label>
-                  <select
-                    value={checkForm.currency}
-                    onChange={(e) => setCheckForm({ ...checkForm, currency: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-                    required
-                  >
-                    <option value="USD">USD</option>
-                    <option value="ZWL">ZWL</option>
-                  </select>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      placeholder="10.00"
+                      value={checkForm.amount}
+                      onChange={(e) => setCheckForm({ ...checkForm, amount: e.target.value })}
+                      required
+                      min="1"
+                      step="0.01"
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 pr-12"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <span className="text-gray-400">USD</span>
+                    </div>
+                  </div>
                   <p className="text-gray-400 text-xs mt-1">
-                    Select the currency for your purchase
+                    Enter amount in US Dollars
                   </p>
                 </div>
 
@@ -348,7 +344,7 @@ ${modalData.purchaseDetails.receipt_footer || 'Thank you for using Xash!'}
                   <div>
                     <h4 className="text-white font-medium mb-1">Enter Details</h4>
                     <p className="text-gray-400 text-sm">
-                      Enter your ZESA meter number, purchase amount, and currency
+                      Enter your ZESA meter number and purchase amount in USD
                     </p>
                   </div>
                 </div>
@@ -388,6 +384,7 @@ ${modalData.purchaseDetails.receipt_footer || 'Thank you for using Xash!'}
                       <li>• Double-check the purchase amount before proceeding</li>
                       <li>• Token purchases are non-refundable</li>
                       <li>• Load tokens in the order provided</li>
+                      <li>• All purchases are in USD only</li>
                     </ul>
                   </div>
                 </div>
@@ -438,7 +435,7 @@ ${modalData.purchaseDetails.receipt_footer || 'Thank you for using Xash!'}
                     <DollarSign className="w-5 h-5 text-green-400" />
                     <span className="text-gray-400">Purchase Amount</span>
                   </div>
-                  <span className="text-green-400 font-bold">{checkForm.amount} {checkForm.currency}</span>
+                  <span className="text-green-400 font-bold">{checkForm.amount} USD</span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
@@ -492,7 +489,7 @@ ${modalData.purchaseDetails.receipt_footer || 'Thank you for using Xash!'}
                   <div className="flex justify-between">
                     <span className="text-gray-400">Purchase Amount:</span>
                     <span className="text-green-400 font-semibold">
-                      {checkForm.amount} {checkForm.currency}
+                      {checkForm.amount} USD
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -528,8 +525,8 @@ ${modalData.purchaseDetails.receipt_footer || 'Thank you for using Xash!'}
         </div>
       )}
 
-        // Success Modal section in Electricity.jsx - Updated to match API response
-    <SuccessModal
+      {/* Success Modal */}
+      <SuccessModal
         isOpen={showSuccessModal}
         onClose={handleModalClose}
         title="Electricity Tokens Purchased Successfully!"
@@ -606,7 +603,7 @@ ${modalData.purchaseDetails.receipt_footer || 'Thank you for using Xash!'}
                 <div>
                     <span className="text-gray-400">Amount Paid:</span>
                     <p className="text-green-400 font-semibold">
-                    {modalData.purchaseDetails.amount} {modalData.purchaseDetails.currency}
+                    {modalData.purchaseDetails.amount} USD
                     </p>
                 </div>
                 <div>
@@ -750,66 +747,66 @@ ${modalData.purchaseDetails.receipt_footer || 'Thank you for using Xash!'}
             )}
 
             {/* Balance and Commission */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Balance Update */}
-                        {modalData.purchaseDetails.balance && (
-                        <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-                            <h4 className="font-semibold text-white mb-3">Wallet Balance</h4>
-                            <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-400">New Balance:</span>
-                                <span className="text-green-400 font-bold text-lg">
-                                {modalData.purchaseDetails.balance.balance} {modalData.purchaseDetails.balance.currency}
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-gray-400">Profit on Hold:</span>
-                                <span className="text-blue-400">{modalData.purchaseDetails.balance.profit_on_hold}</span>
-                            </div>
-                            </div>
-                        </div>
-                        )}
-
-                        {/* Commission */}
-                        {modalData.purchaseDetails.commission && (
-                        <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                            <h4 className="font-semibold text-white mb-3">Commission Earned</h4>
-                            <div className="flex justify-between items-center">
-                            <span className="text-gray-400">Commission:</span>
-                            <span className="text-blue-400 font-bold text-lg">
-                                {modalData.purchaseDetails.commission}
-                            </span>
-                            </div>
-                        </div>
-                        )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Balance Update */}
+                {modalData.purchaseDetails.balance && (
+                <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                    <h4 className="font-semibold text-white mb-3">Wallet Balance</h4>
+                    <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                        <span className="text-gray-400">New Balance:</span>
+                        <span className="text-green-400 font-bold text-lg">
+                        {modalData.purchaseDetails.balance.balance} {modalData.purchaseDetails.balance.currency}
+                        </span>
                     </div>
-
-                    {/* Footer Message */}
-                    {modalData.purchaseDetails.receipt_footer && (
-                        <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg text-center">
-                        <p className="text-purple-300">{modalData.purchaseDetails.receipt_footer}</p>
-                        </div>
-                    )}
-
-                    {/* Instructions */}
-                    <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                        <div className="flex items-start space-x-3">
-                        <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                        <div>
-                            <h4 className="text-yellow-400 font-medium mb-2">How to Load Your Token</h4>
-                            <ul className="text-yellow-300 text-sm space-y-1">
-                            <li>1. Enter the 20-digit token exactly as shown above</li>
-                            <li>2. Wait for the meter to accept the token</li>
-                            <li>3. Your units will be added automatically</li>
-                            <li>4. Keep this receipt for your records</li>
-                            <li>5. Token expires after 30 days if not used</li>
-                            </ul>
-                        </div>
-                        </div>
+                    <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-400">Profit on Hold:</span>
+                        <span className="text-blue-400">{modalData.purchaseDetails.balance.profit_on_hold}</span>
                     </div>
                     </div>
+                </div>
                 )}
-    </SuccessModal>
+
+                {/* Commission */}
+                {modalData.purchaseDetails.commission && (
+                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <h4 className="font-semibold text-white mb-3">Commission Earned</h4>
+                    <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Commission:</span>
+                    <span className="text-blue-400 font-bold text-lg">
+                        {modalData.purchaseDetails.commission}
+                    </span>
+                    </div>
+                </div>
+                )}
+            </div>
+
+            {/* Footer Message */}
+            {modalData.purchaseDetails.receipt_footer && (
+                <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg text-center">
+                <p className="text-purple-300">{modalData.purchaseDetails.receipt_footer}</p>
+                </div>
+            )}
+
+            {/* Instructions */}
+            <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <div className="flex items-start space-x-3">
+                <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <div>
+                    <h4 className="text-yellow-400 font-medium mb-2">How to Load Your Token</h4>
+                    <ul className="text-yellow-300 text-sm space-y-1">
+                    <li>1. Enter the 20-digit token exactly as shown above</li>
+                    <li>2. Wait for the meter to accept the token</li>
+                    <li>3. Your units will be added automatically</li>
+                    <li>4. Keep this receipt for your records</li>
+                    <li>5. Token expires after 30 days if not used</li>
+                    </ul>
+                </div>
+                </div>
+            </div>
+            </div>
+        )}
+      </SuccessModal>
 
       {/* Error Modal */}
       <ErrorModal
