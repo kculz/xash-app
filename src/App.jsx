@@ -25,6 +25,8 @@ import { Transfer } from './pages/payments/Transfer';
 import { Fund } from './pages/fund/Fund';
 import { EcoCash } from './pages/fund/Ecocash';
 import { InnBucks } from './pages/fund/InnBucks';
+import ChangePassword from './pages/ChangePassword';
+import ServerTokens from './pages/ServerTokens';
 
 const AppRoutes = () => {
   const { token, user, loading } = useAuth();
@@ -77,6 +79,10 @@ const AppRoutes = () => {
           <Route path="/fund" element={<Fund />} />
           <Route path="/fund/ecocash" element={<EcoCash />} />
           <Route path="/fund/innbucks" element={<InnBucks />} />
+
+          {/* Settings Routes */}
+          <Route path="/change-password" element={<ChangePassword />} />
+          <Route path="/server-tokens" element={<ServerTokens />} />
           
           {/* Fallback route */}
           <Route path="*" element={<Navigate to="/" replace />} />

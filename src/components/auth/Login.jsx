@@ -1,10 +1,9 @@
-// src/components/auth/Login.jsx
 import { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card } from '../ui/Card';
 import { useAuth } from '../../hooks/useAuth';
-import Logo from "../../assets/xash.png"
+import Logo from "../../assets/xash.png";
 import { Helmet } from 'react-helmet';
 
 export const Login = ({ onSuccess, onRegisterClick, onForgotUserNumber }) => {
@@ -28,34 +27,48 @@ export const Login = ({ onSuccess, onRegisterClick, onForgotUserNumber }) => {
   }, []);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
     
-    // Clear errors when user starts typing
-    if (errors[e.target.name]) {
-      setErrors({
-        ...errors,
-        [e.target.name]: ''
-      });
+    // Clear errors for this field when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+    
+    // Clear submit error when user modifies any field
+    if (errors.submit) {
+      setErrors(prev => ({
+        ...prev,
+        submit: ''
+      }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
+    
     setLoading(true);
-    setErrors({});
+    setErrors({}); // Clear all errors
 
     // Basic validation
+    const newErrors = {};
     if (!formData.user_number.trim()) {
-      setErrors({ user_number: 'User number is required' });
-      setLoading(false);
-      return;
+      newErrors.user_number = 'User number is required';
     }
-
+    
     if (!formData.password.trim()) {
-      setErrors({ password: 'Password is required' });
+      newErrors.password = 'Password is required';
+    }
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       setLoading(false);
       return;
     }
@@ -66,7 +79,26 @@ export const Login = ({ onSuccess, onRegisterClick, onForgotUserNumber }) => {
       localStorage.setItem('remembered_user_number', formData.user_number);
       onSuccess?.();
     } catch (error) {
-      setErrors({ submit: error.message });
+      // Handle different types of errors
+      let errorMessage = error.message;
+      
+      // If it's a validation error with multiple messages
+      if (error.errors && typeof error.errors === 'object') {
+        const fieldErrors = {};
+        Object.entries(error.errors).forEach(([field, messages]) => {
+          if (Array.isArray(messages)) {
+            fieldErrors[field] = messages.join('. ');
+          }
+        });
+        
+        if (Object.keys(fieldErrors).length > 0) {
+          setErrors(fieldErrors);
+        } else {
+          setErrors({ submit: error.message });
+        }
+      } else {
+        setErrors({ submit: errorMessage });
+      }
     } finally {
       setLoading(false);
     }
@@ -74,10 +106,10 @@ export const Login = ({ onSuccess, onRegisterClick, onForgotUserNumber }) => {
 
   return (
     <>
-    <Helmet>
-      <meta charSet="utf-8" />
-      <title>Xash | Login</title>
-    </Helmet>
+      <Helmet>
+        <meta charSet="utf-8" />
+        <title>Xash | Login</title>
+      </Helmet>
       <Card className="max-w-md mx-auto">
         <div className="text-center mb-2">
           <div className="flex items-center justify-center mb-4">
@@ -88,7 +120,7 @@ export const Login = ({ onSuccess, onRegisterClick, onForgotUserNumber }) => {
         
         <h2 className="text-2xl font-bold text-white mb-6 text-center">Sign In</h2>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <Input
             label="User Number"
             name="user_number"
@@ -98,6 +130,8 @@ export const Login = ({ onSuccess, onRegisterClick, onForgotUserNumber }) => {
             required
             placeholder="Enter your 6-digit user number"
             error={errors.user_number}
+            disabled={loading}
+            autoComplete="username"
           />
 
           <Input
@@ -109,23 +143,31 @@ export const Login = ({ onSuccess, onRegisterClick, onForgotUserNumber }) => {
             required
             placeholder="Enter your password"
             error={errors.password}
+            disabled={loading}
+            autoComplete="current-password"
           />
 
           {errors.submit && (
-            <div className="p-3 bg-red-500/20 border border-red-500 rounded-lg">
+            <div className="p-3 bg-red-500/20 border border-red-500 rounded-lg animate-fadeIn">
               <p className="text-red-500 text-sm">{errors.submit}</p>
             </div>
           )}
 
-          <Button type="submit" loading={loading} className="w-full">
-            Sign In
+          <Button 
+            type="submit" 
+            loading={loading} 
+            className="w-full"
+            disabled={loading}
+          >
+            {loading ? 'Signing In...' : 'Sign In'}
           </Button>
         </form>
 
         <div className="mt-6 space-y-3 text-center">
           <button 
             onClick={onForgotUserNumber}
-            className="block w-full text-blue-400 hover:text-blue-300 text-sm transition-colors"
+            className="block w-full text-blue-400 hover:text-blue-300 text-sm transition-colors disabled:opacity-50"
+            disabled={loading}
           >
             Forgot your user number?
           </button>
@@ -136,6 +178,7 @@ export const Login = ({ onSuccess, onRegisterClick, onForgotUserNumber }) => {
               variant="outline" 
               onClick={onRegisterClick}
               className="w-full"
+              disabled={loading}
             >
               Create New Account
             </Button>

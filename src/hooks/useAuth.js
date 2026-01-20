@@ -1,5 +1,5 @@
 // src/hooks/useAuth.js
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, createContext, useContext, useCallback } from 'react';
 import { api } from '../utils/api';
 
 const AuthContext = createContext();
@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   // Function to fetch user profile
-  const fetchUserProfile = async (authToken) => {
+  const fetchUserProfile = useCallback(async (authToken) => {
     try {
       const response = await api.request('/profile', {
         method: 'GET',
@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Failed to fetch user profile:', error);
       return false;
     }
-  };
+  }, []); // No dependencies needed as it only uses api and setUser
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -53,23 +53,19 @@ export const AuthProvider = ({ children }) => {
             // Token is invalid or user data couldn't be fetched
             throw new Error('Failed to fetch user data');
           }
-          
-          setLoading(false);
         } catch (error) {
           console.error('Token validation failed:', error);
           // Token is invalid, clear it
           setToken(null);
           setUser(null);
           localStorage.removeItem('token');
-          setLoading(false);
         }
-      } else {
-        setLoading(false);
       }
+      setLoading(false);
     };
 
     initializeAuth();
-  }, [token]);
+  }, [token, fetchUserProfile]);
 
   // Authentication functions
   const register = async (userData) => {
@@ -454,6 +450,70 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Change password function
+const changePassword = async (passwordData) => {
+  try {
+    const response = await api.request('/auth/change-password', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: passwordData
+    });
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Server token functions
+const getServerTokens = async () => {
+  try {
+    const response = await api.request('/auth/server-tokens', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const createServerToken = async (tokenName) => {
+  try {
+    const response = await api.request('/auth/server-tokens', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: { name: tokenName }
+    });
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+const revokeServerToken = async (tokenId) => {
+  try {
+    const response = await api.request(`/auth/server-tokens/${tokenId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
   const value = {
     // User state
     user,
@@ -502,7 +562,15 @@ export const AuthProvider = ({ children }) => {
     getCommissions,
     
     // Utility functions
-    fetchUserProfile
+    fetchUserProfile,
+
+    // Change password function
+    changePassword,
+
+    // Server token functions
+    getServerTokens,
+    createServerToken,
+    revokeServerToken,
   };
 
   return (

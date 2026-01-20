@@ -20,7 +20,8 @@ import {
   Calendar,
   Save,
   DollarSign,
-  Wallet as WalletIcon
+  Wallet as WalletIcon,
+  Server
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -395,257 +396,222 @@ export const Profile = () => {
             )}
           </div>
 
-          {/* API Key Management & Wallet */}
-          <div className="space-y-6">
-            {/* API Key Management */}
-            <Card className="p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <Shield className="w-5 h-5 text-violet-400" />
-                <h2 className="text-xl font-bold text-white">API Key Management</h2>
-              </div>
-
-              <div className="space-y-6">
-                {/* Current API Key */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Your API Key (JWT Token)
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showApiKey ? 'text' : 'password'}
-                      value={apiKey}
-                      readOnly
-                      className="w-full px-4 py-2.5 pr-28 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
-                      <button
-                        onClick={toggleShowApiKey}
-                        className="h-8 px-2 rounded border border-gray-600 hover:bg-gray-600 transition-colors"
-                        title={showApiKey ? 'Hide API key' : 'Show API key'}
-                      >
-                        {showApiKey ? (
-                          <EyeOff className="w-4 h-4 text-gray-300" />
-                        ) : (
-                          <Eye className="w-4 h-4 text-gray-300" />
-                        )}
-                      </button>
-                      <button
-                        onClick={handleCopyApiKey}
-                        className="h-8 px-2 rounded border border-gray-600 hover:bg-gray-600 transition-colors"
-                        title="Copy API key"
-                      >
-                        {copied ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-400" />
-                        ) : (
-                          <Copy className="w-4 h-4 text-gray-300" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Status Messages */}
-                  <div className="mt-2 space-y-1">
-                    {copied && (
-                      <p className="text-green-400 text-sm flex items-center space-x-1">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>API key copied to clipboard!</span>
-                      </p>
-                    )}
-                    {saved && (
-                      <p className="text-green-400 text-sm flex items-center space-x-1">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>API key saved successfully!</span>
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Save Button */}
-                <Button
-                  onClick={handleSaveApiKey}
-                  loading={saving}
-                  className="w-full"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  Save API Key
-                </Button>
-
-                {/* Refresh Token Section */}
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <RefreshCw className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <h3 className="text-blue-400 font-semibold mb-1">Generate New API Key</h3>
-                      <p className="text-blue-300 text-sm mb-3">
-                        Generate a new API key (JWT token). This will invalidate your current token and issue a new one. You will need to enter your password.
-                      </p>
-                      <Button
-                        onClick={handleRegenerateToken}
-                        variant="outline"
-                        className="w-full border-blue-500 text-blue-400 hover:bg-blue-500/20 flex items-center justify-center flex-1"
-                      >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        <p>Generate New API Key</p>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
 
 
-                              {/* Base URL Information */}
-                <div className="bg-violet-500/10 border border-violet-500/20 rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <Building className="w-5 h-5 text-violet-400 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <h3 className="text-violet-400 font-semibold mb-1">API Base URL</h3>
-                      <p className="text-violet-300 text-sm mb-2">
-                        Use this base URL for all API requests:
-                      </p>
-                      <div className="flex items-center space-x-2">
-                        <code className="flex-1 p-2 bg-gray-800 rounded text-xs text-gray-300 font-mono">
-                          {import.meta.env.VITE_API_BASE_URL}
-                        </code>
-                        <button
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(import.meta.env.VITE_API_BASE_URL);
-                              setCopied(true);
-                              setTimeout(() => setCopied(false), 2000);
-                            } catch (error) {
-                              console.error('Failed to copy:', error);
-                            }
-                          }}
-                          className="p-2 rounded border border-violet-500/30 hover:bg-violet-500/20 transition-colors"
-                          title="Copy base URL"
-                        >
-                          {copied ? (
-                            <CheckCircle2 className="w-4 h-4 text-green-400" />
-                          ) : (
-                            <Copy className="w-4 h-4 text-violet-300" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
 
-                {/* API Documentation */}
-                <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <AlertTriangle className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <h3 className="text-orange-400 font-semibold mb-1">API Documentation</h3>
-                      <p className="text-orange-300 text-sm mb-3">
-                        Learn how to integrate with our API, view endpoints, and explore code examples.
-                      </p>
-                      <a
-                        href="https://vdocs.xash.co.zw/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center space-x-2 px-4 py-2 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 rounded-lg text-orange-300 hover:text-orange-200 transition-colors duration-200"
-                      >
-                        <span>View Documentation</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
+{/* Security & Wallet */}
+<div className="space-y-6">
+  {/* Security Actions */}
+  <Card className="p-6">
+    <div className="flex items-center space-x-3 mb-6">
+      <Shield className="w-5 h-5 text-violet-400" />
+      <h2 className="text-xl font-bold text-white">Security & API</h2>
+    </div>
 
-                {/* API Key Usage Information */}
-                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <Key className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <h3 className="text-green-400 font-semibold mb-1">How to Use Your API Key</h3>
-                      <p className="text-green-300 text-sm mb-2">
-                        Use this JWT token in the Authorization header for API requests:
-                      </p>
-                      <code className="block p-2 bg-gray-800 rounded text-xs text-gray-300 font-mono">
-                        Authorization: Bearer {apiKey.substring(0, 20)}...
-                      </code>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
+    <div className="space-y-4">
+      {/* Change Password Card */}
+      <div className="p-4 bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
+              <Key className="w-5 h-5 text-blue-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-white">Change Password</h3>
+              <p className="text-sm text-gray-400">Update your account password</p>
+            </div>
+          </div>
+          <Button
+            onClick={() => navigate('/change-password')}
+            variant="outline"
+            size="sm"
+          >
+            Manage
+          </Button>
+        </div>
+      </div>
 
-            {/* Wallet Balance */}
-            <Card className="p-6">
-              <div className="flex items-center space-x-3 mb-6">
-                <WalletIcon className="w-5 h-5 text-blue-400" />
-                <h2 className="text-xl font-bold text-white">Wallet Balance</h2>
-              </div>
+      {/* Server Tokens Card */}
+      <div className="p-4 bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-violet-500/20 rounded-full flex items-center justify-center">
+              <Server className="w-5 h-5 text-violet-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-white">Server Tokens</h3>
+              <p className="text-sm text-gray-400">Manage API tokens for integrations</p>
+            </div>
+          </div>
+          <Button
+            onClick={() => navigate('/server-tokens')}
+            variant="outline"
+            size="sm"
+          >
+            Manage
+          </Button>
+        </div>
+        <div className="mt-3 pt-3 border-t border-gray-700">
+          <p className="text-xs text-gray-400">
+            Create long-lived tokens for server integrations. These can be revoked individually without logging you out.
+          </p>
+        </div>
+      </div>
 
-              {walletLoading ? (
-                <div className="flex justify-center items-center py-8">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-4 bg-gray-900 rounded-lg border border-gray-700">
-                      <h3 className="text-gray-400 text-sm mb-2">Total Balance</h3>
-                      <p className="text-2xl font-bold text-white">
-                        ${getTotalBalance().toFixed(2)}
-                      </p>
-                      <p className="text-gray-400 text-sm mt-1">{getCurrency()}</p>
-                    </div>
+      {/* API Documentation Card */}
+      <div className="p-4 bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center">
+            <AlertTriangle className="w-5 h-5 text-orange-400" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-white">API Documentation</h3>
+            <p className="text-sm text-gray-400">Learn how to integrate with our API</p>
+          </div>
+        </div>
+        <div className="mt-3 pt-3 border-t border-gray-700">
+          <p className="text-xs text-gray-400 mb-3">
+            View endpoints, explore code examples, and learn how to integrate with our API.
+          </p>
+          <a
+            href="https://vdocs.xash.co.zw/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center space-x-2 text-orange-400 hover:text-orange-300 text-sm transition-colors"
+          >
+            <span>View Documentation</span>
+            <ChevronRight className="w-4 h-4" />
+          </a>
+        </div>
+      </div>
 
-                    <div className="text-center p-4 bg-gray-900 rounded-lg border border-gray-700">
-                      <h3 className="text-gray-400 text-sm mb-2">Available</h3>
-                      <p className="text-2xl font-bold text-green-400">
-                        ${getAvailableBalance().toFixed(2)}
-                      </p>
-                      <p className="text-gray-400 text-sm mt-1">Ready to use</p>
-                    </div>
-                  </div>
+      {/* Session Info */}
+      <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
+            <Shield className="w-5 h-5 text-blue-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-blue-400">Current Session</h3>
+            <p className="text-sm text-blue-300">
+              You're logged in with a session token. For server integrations, use Server Tokens.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Card>
 
-                  <div className="text-center p-4 bg-gray-900 rounded-lg border border-gray-700">
-                    <h3 className="text-gray-400 text-sm mb-2">Pending</h3>
-                    <p className="text-2xl font-bold text-yellow-400">
-                      ${getPendingBalance().toFixed(2)}
-                    </p>
-                    <p className="text-gray-400 text-sm mt-1">In process</p>
-                  </div>
-                </div>
-              )}
-            </Card>
+  {/* Wallet Balance - Keep this section as is */}
+  <Card className="p-6">
+    <div className="flex items-center space-x-3 mb-6">
+      <WalletIcon className="w-5 h-5 text-blue-400" />
+      <h2 className="text-xl font-bold text-white">Wallet Balance</h2>
+    </div>
+
+    {walletLoading ? (
+      <div className="flex justify-center items-center py-8">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+      </div>
+    ) : (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="text-center p-4 bg-gray-900 rounded-lg border border-gray-700">
+            <h3 className="text-gray-400 text-sm mb-2">Total Balance</h3>
+            <p className="text-2xl font-bold text-white">
+              ${getTotalBalance().toFixed(2)}
+            </p>
+            <p className="text-gray-400 text-sm mt-1">{getCurrency()}</p>
+          </div>
+
+          <div className="text-center p-4 bg-gray-900 rounded-lg border border-gray-700">
+            <h3 className="text-gray-400 text-sm mb-2">Available</h3>
+            <p className="text-2xl font-bold text-green-400">
+              ${getAvailableBalance().toFixed(2)}
+            </p>
+            <p className="text-gray-400 text-sm mt-1">Ready to use</p>
           </div>
         </div>
 
-        {/* Security Information */}
-        <Card className="p-6 mt-8">
-          <div className="flex items-center space-x-3 mb-4">
-            <Shield className="w-5 h-5 text-green-400" />
-            <h2 className="text-xl font-bold text-white">Security Information</h2>
+        <div className="text-center p-4 bg-gray-900 rounded-lg border border-gray-700">
+          <h3 className="text-gray-400 text-sm mb-2">Pending</h3>
+          <p className="text-2xl font-bold text-yellow-400">
+            ${getPendingBalance().toFixed(2)}
+          </p>
+          <p className="text-gray-400 text-sm mt-1">In process</p>
+        </div>
+      </div>
+    )}
+  </Card>
+</div>
+        </div>
+
+{/* Security Actions */}
+<Card className="p-6 mt-8">
+  <div className="flex items-center space-x-3 mb-6">
+    <Shield className="w-5 h-5 text-green-400" />
+    <h2 className="text-xl font-bold text-white">Security Settings</h2>
+  </div>
+
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <div className="text-center p-4 bg-gray-800 rounded-lg">
+      <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+        <CheckCircle2 className="w-6 h-6 text-green-400" />
+      </div>
+      <h3 className="text-white font-semibold mb-1">Account Secure</h3>
+      <p className="text-gray-400 text-sm">Your account is protected</p>
+    </div>
+    
+    <div className="text-center p-4 bg-gray-800 rounded-lg">
+      <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+        <Key className="w-6 h-6 text-blue-400" />
+      </div>
+      <h3 className="text-white font-semibold mb-1">API Active</h3>
+      <p className="text-gray-400 text-sm">API key is active and valid</p>
+    </div>
+    
+    <div className="text-center p-4 bg-gray-800 rounded-lg">
+      <div className="w-12 h-12 bg-violet-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+        <User className="w-6 h-6 text-violet-400" />
+      </div>
+      <h3 className="text-white font-semibold mb-1">Profile Complete</h3>
+      <p className="text-gray-400 text-sm">All information provided</p>
+    </div>
+  </div>
+
+  <div className="border-t border-gray-700 pt-6">
+    <h3 className="text-white font-semibold mb-4">Security Actions</h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Button
+        onClick={() => navigate('/change-password')}
+        variant="outline"
+        className="w-full h-auto py-3"
+      >
+        <div className="flex items-center space-x-3">
+          <Key className="w-5 h-5 text-blue-400" />
+          <div className="text-left">
+            <p className="font-semibold">Change Password</p>
+            <p className="text-sm text-gray-400">Update your account password</p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                <CheckCircle2 className="w-6 h-6 text-green-400" />
-              </div>
-              <h3 className="text-white font-semibold mb-1">Account Secure</h3>
-              <p className="text-gray-400 text-sm">Your account is protected</p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Key className="w-6 h-6 text-blue-400" />
-              </div>
-              <h3 className="text-white font-semibold mb-1">API Active</h3>
-              <p className="text-gray-400 text-sm">API key is active and valid</p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-12 h-12 bg-violet-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                <User className="w-6 h-6 text-violet-400" />
-              </div>
-              <h3 className="text-white font-semibold mb-1">Profile Complete</h3>
-              <p className="text-gray-400 text-sm">All information provided</p>
-            </div>
+        </div>
+      </Button>
+      
+      <Button
+        onClick={() => navigate('/server-tokens')}
+        variant="outline"
+        className="w-full h-auto py-3"
+      >
+        <div className="flex items-center space-x-3">
+          <Server className="w-5 h-5 text-violet-400" />
+          <div className="text-left">
+            <p className="font-semibold">Server Tokens</p>
+            <p className="text-sm text-gray-400">Manage API tokens</p>
           </div>
-        </Card>
+        </div>
+      </Button>
+    </div>
+  </div>
+</Card>
 
 
         {/* Password Confirmation Modal */}
