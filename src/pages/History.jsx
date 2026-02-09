@@ -4,10 +4,10 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { api } from '../utils/api';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Home, 
-  ChevronRight, 
-  Calendar, 
+import {
+  Home,
+  ChevronRight,
+  Calendar,
   Filter,
   Download,
   RefreshCw,
@@ -18,15 +18,21 @@ import {
   Search,
   MoreVertical,
   FileText,
-  ChevronDown
+  ChevronDown,
+  X,
+  Clock,
+  Hash,
+  Copy,
+  CheckCircle
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { Helmet } from 'react-helmet';
-import logo from '../assets/logo.jpg'; 
+import logo from '../assets/logo.jpg';
 
 // Dynamic imports for export libraries (to reduce bundle size)
 const loadPDFLibrary = () => import('jspdf');
 const loadHTML2Canvas = () => import('html2canvas');
+const loadXLSX = () => import('xlsx');
 
 export const History = () => {
   const { token, logout, user } = useAuth();
@@ -37,11 +43,21 @@ export const History = () => {
   const [currency, setCurrency] = useState('USD');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [dateRange, setDateRange] = useState({
+    start: '',
+    end: ''
+  });
+  const [showDateFilter, setShowDateFilter] = useState(false);
   const [error, setError] = useState(null);
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportFormat, setExportFormat] = useState('');
+  const [copiedId, setCopiedId] = useState(null);
   const exportRef = useRef(null);
+
+  // Pagination
+  const ITEMS_PER_PAGE = 20;
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -69,9 +85,9 @@ export const History = () => {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       console.log('History API Response:', response);
-      
+
       if (response.success && response.data) {
         setTransactions(response.data);
       } else {
@@ -80,7 +96,7 @@ export const History = () => {
     } catch (error) {
       console.error('Failed to fetch history:', error);
       setError(error.message);
-      
+
       if (error.message.includes('Session expired') || error.message.includes('Unauthenticated')) {
         logout();
       }
@@ -93,6 +109,12 @@ export const History = () => {
   const handleRefresh = () => {
     setRefreshing(true);
     fetchHistory();
+  };
+
+  const copyToClipboard = (text, id) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   const getTransactionIcon = (type) => {
@@ -169,8 +191,35 @@ export const History = () => {
     return '0.00';
   };
 
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const formatDateTime = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  };
+
+  const formatTime = (dateString) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  };
+
   const calculateTotal = (transactionType) => {
-    return transactions
+    return getFilteredTransactions()
       .filter(t => t.type === transactionType)
       .reduce((sum, t) => {
         const amount = typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount;
@@ -192,14 +241,64 @@ export const History = () => {
     return labels[type] || type.replace(/_/g, ' ');
   };
 
-  const filteredTransactions = transactions.filter(transaction => {
-    const matchesSearch = transaction.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transaction.amount?.toString().includes(searchTerm) ||
-                         transaction.id?.toString().includes(searchTerm) ||
-                         transaction.name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterType === 'all' || transaction.type === filterType;
-    return matchesSearch && matchesFilter;
-  });
+  // Filter transactions based on search, type, and date range
+  const getFilteredTransactions = () => {
+    return transactions.filter(transaction => {
+      // Search filter
+      const matchesSearch = searchTerm === '' ||
+        transaction.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.amount?.toString().includes(searchTerm) ||
+        transaction.id?.toString().includes(searchTerm) ||
+        transaction.reference?.toString().includes(searchTerm) ||
+        transaction.name?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      // Type filter
+      const matchesType = filterType === 'all' || transaction.type === filterType;
+
+      // Date range filter
+      let matchesDate = true;
+      if (dateRange.start && dateRange.end) {
+        const transactionDate = new Date(transaction.created_at);
+        const startDate = new Date(dateRange.start);
+        const endDate = new Date(dateRange.end);
+        endDate.setHours(23, 59, 59, 999); // Include entire end day
+        matchesDate = transactionDate >= startDate && transactionDate <= endDate;
+      } else if (dateRange.start) {
+        const transactionDate = new Date(transaction.created_at);
+        const startDate = new Date(dateRange.start);
+        matchesDate = transactionDate >= startDate;
+      } else if (dateRange.end) {
+        const transactionDate = new Date(transaction.created_at);
+        const endDate = new Date(dateRange.end);
+        endDate.setHours(23, 59, 59, 999);
+        matchesDate = transactionDate <= endDate;
+      }
+
+      return matchesSearch && matchesType && matchesDate;
+    });
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setFilterType('all');
+    setDateRange({ start: '', end: '' });
+    setShowDateFilter(false);
+  };
+
+  const hasActiveFilters = () => {
+    return searchTerm !== '' || filterType !== 'all' || dateRange.start !== '' || dateRange.end !== '';
+  };
+
+  const filteredTransactions = getFilteredTransactions();
+
+  // Pagination derived state
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, filterType, dateRange.start, dateRange.end]);
+  const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE));
+  const paginatedTransactions = filteredTransactions.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const transactionTypes = [
     { value: 'all', label: 'All Transactions' },
@@ -217,6 +316,13 @@ export const History = () => {
       setExporting(true);
       setExportFormat('pdf');
       setExportDropdownOpen(false);
+
+      const transactionsToExport = filteredTransactions; // Export filtered transactions
+
+      if (transactionsToExport.length === 0) {
+        alert('No transactions to export');
+        return;
+      }
 
       // Dynamically import libraries
       const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
@@ -247,32 +353,48 @@ export const History = () => {
       const logoImg = document.createElement('img');
       logoImg.src = logo;
       logoImg.style.width = '80px';
-      // logoImg.style.height = '50px';
       logoImg.style.marginRight = '15px';
 
       // Title section
       const titleDiv = document.createElement('div');
       titleDiv.style.flex = '1';
-      
+
       const title = document.createElement('h1');
       title.textContent = 'Xash Transaction History';
       title.style.color = '#1e40af';
       title.style.margin = '0';
       title.style.fontSize = '24px';
       title.style.fontWeight = 'bold';
-      
+
       const subtitle = document.createElement('p');
-      subtitle.textContent = `Generated on ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
+      subtitle.textContent = `Generated on ${formatDateTime(new Date())}`;
       subtitle.style.color = '#6b7280';
       subtitle.style.margin = '5px 0 0 0';
       subtitle.style.fontSize = '12px';
-      
+
       const userInfo = document.createElement('p');
       userInfo.textContent = `User: ${user?.first_name || 'N/A'} ${user?.last_name || ''} | Email: ${user?.email || 'N/A'}`;
       userInfo.style.color = '#6b7280';
       userInfo.style.margin = '5px 0 0 0';
       userInfo.style.fontSize = '12px';
-      
+
+      // Filter info if any filters are applied
+      if (hasActiveFilters()) {
+        const filterInfo = document.createElement('p');
+        let filterText = 'Filters: ';
+        if (searchTerm) filterText += `Search "${searchTerm}" `;
+        if (filterType !== 'all') filterText += `Type: ${filterType} `;
+        if (dateRange.start || dateRange.end) {
+          filterText += `Date: ${dateRange.start || '...'} to ${dateRange.end || '...'}`;
+        }
+        filterInfo.textContent = filterText;
+        filterInfo.style.color = '#6b7280';
+        filterInfo.style.margin = '5px 0 0 0';
+        filterInfo.style.fontSize = '11px';
+        filterInfo.style.fontStyle = 'italic';
+        titleDiv.appendChild(filterInfo);
+      }
+
       titleDiv.appendChild(title);
       titleDiv.appendChild(subtitle);
       titleDiv.appendChild(userInfo);
@@ -294,25 +416,26 @@ export const History = () => {
       const summaryItems = [
         { label: 'Total Deposits', value: `$${calculateTotal('deposit')}`, color: '#10b981' },
         { label: 'Total Commissions', value: `$${calculateTotal('commission')}`, color: '#8b5cf6' },
-        { label: 'Total Transactions', value: transactions.length.toString(), color: '#3b82f6' }
+        { label: 'Total Transactions', value: transactionsToExport.length.toString(), color: '#3b82f6' },
+        { label: 'Date Range', value: dateRange.start && dateRange.end ? `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}` : 'All Time', color: '#64748b' }
       ];
 
       summaryItems.forEach(item => {
         const itemDiv = document.createElement('div');
         itemDiv.style.textAlign = 'center';
-        
+
         const value = document.createElement('div');
         value.textContent = item.value;
         value.style.fontSize = '18px';
         value.style.fontWeight = 'bold';
         value.style.color = item.color;
         value.style.marginBottom = '5px';
-        
+
         const label = document.createElement('div');
         label.textContent = item.label;
         label.style.fontSize = '12px';
         label.style.color = '#64748b';
-        
+
         itemDiv.appendChild(value);
         itemDiv.appendChild(label);
         summary.appendChild(itemDiv);
@@ -323,85 +446,99 @@ export const History = () => {
       table.style.width = '100%';
       table.style.borderCollapse = 'collapse';
       table.style.marginTop = '20px';
+      table.style.fontSize = '10px';
 
       // Table header
       const thead = document.createElement('thead');
       const headerRow = document.createElement('tr');
       headerRow.style.backgroundColor = '#3b82f6';
       headerRow.style.color = 'white';
-      
-      const headers = ['Date', 'Type', 'Description', 'Amount', 'Status'];
+
+      const headers = ['Date', 'Time', 'Reference', 'Type', 'Description', 'Amount', 'Status'];
       headers.forEach(headerText => {
         const th = document.createElement('th');
         th.textContent = headerText;
-        th.style.padding = '12px 8px';
+        th.style.padding = '8px 4px';
         th.style.textAlign = 'left';
         th.style.border = '1px solid #ddd';
-        th.style.fontSize = '12px';
+        th.style.fontSize = '10px';
         th.style.fontWeight = 'bold';
         headerRow.appendChild(th);
       });
-      
+
       thead.appendChild(headerRow);
       table.appendChild(thead);
 
       // Table body
       const tbody = document.createElement('tbody');
-      filteredTransactions.forEach((transaction, index) => {
+      transactionsToExport.forEach((transaction, index) => {
         const row = document.createElement('tr');
         row.style.backgroundColor = index % 2 === 0 ? '#f8fafc' : 'white';
-        
+
         // Date cell
         const dateCell = document.createElement('td');
-        dateCell.textContent = new Date(transaction.created_at).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric'
-        });
-        dateCell.style.padding = '10px 8px';
+        dateCell.textContent = formatDate(transaction.created_at);
+        dateCell.style.padding = '6px 4px';
         dateCell.style.border = '1px solid #e2e8f0';
-        dateCell.style.fontSize = '11px';
-        
+        dateCell.style.fontSize = '9px';
+
+        // Time cell
+        const timeCell = document.createElement('td');
+        timeCell.textContent = formatTime(transaction.created_at);
+        timeCell.style.padding = '6px 4px';
+        timeCell.style.border = '1px solid #e2e8f0';
+        timeCell.style.fontSize = '9px';
+
+        // Reference cell
+        const refCell = document.createElement('td');
+        refCell.textContent = transaction.reference || transaction.id || 'N/A';
+        refCell.style.padding = '6px 4px';
+        refCell.style.border = '1px solid #e2e8f0';
+        refCell.style.fontSize = '9px';
+        refCell.style.fontFamily = 'monospace';
+
         // Type cell
         const typeCell = document.createElement('td');
         typeCell.textContent = getTypeLabel(transaction.type);
-        typeCell.style.padding = '10px 8px';
+        typeCell.style.padding = '6px 4px';
         typeCell.style.border = '1px solid #e2e8f0';
-        typeCell.style.fontSize = '11px';
-        
+        typeCell.style.fontSize = '9px';
+
         // Description cell
         const descCell = document.createElement('td');
         descCell.textContent = transaction.name || transaction.type;
-        descCell.style.padding = '10px 8px';
+        descCell.style.padding = '6px 4px';
         descCell.style.border = '1px solid #e2e8f0';
-        descCell.style.fontSize = '11px';
-        
+        descCell.style.fontSize = '9px';
+
         // Amount cell
         const amountCell = document.createElement('td');
         amountCell.textContent = `${getAmountPrefix(transaction.type)}$${formatAmount(transaction.amount)}`;
-        amountCell.style.padding = '10px 8px';
+        amountCell.style.padding = '6px 4px';
         amountCell.style.border = '1px solid #e2e8f0';
-        amountCell.style.fontSize = '11px';
+        amountCell.style.fontSize = '9px';
         amountCell.style.color = transaction.type === 'deposit' || transaction.type === 'commission' || transaction.type === 'voucher_refund' ? '#10b981' : '#ef4444';
         amountCell.style.fontWeight = 'bold';
-        
+
         // Status cell
         const statusCell = document.createElement('td');
         statusCell.textContent = 'Completed';
-        statusCell.style.padding = '10px 8px';
+        statusCell.style.padding = '6px 4px';
         statusCell.style.border = '1px solid #e2e8f0';
-        statusCell.style.fontSize = '11px';
+        statusCell.style.fontSize = '9px';
         statusCell.style.color = '#10b981';
         statusCell.style.fontWeight = 'bold';
-        
+
         row.appendChild(dateCell);
+        row.appendChild(timeCell);
+        row.appendChild(refCell);
         row.appendChild(typeCell);
         row.appendChild(descCell);
         row.appendChild(amountCell);
         row.appendChild(statusCell);
         tbody.appendChild(row);
       });
-      
+
       table.appendChild(tbody);
 
       // Footer
@@ -410,18 +547,18 @@ export const History = () => {
       footer.style.paddingTop = '15px';
       footer.style.borderTop = '2px solid #e2e8f0';
       footer.style.color = '#64748b';
-      footer.style.fontSize = '10px';
+      footer.style.fontSize = '8px';
       footer.style.textAlign = 'center';
-      
+
       const footerText = document.createElement('p');
-      footerText.textContent = `Report generated by Xash Financial Platform • ${filteredTransactions.length} transactions shown • Currency: ${currency}`;
+      footerText.textContent = `Report generated by Xash Financial Platform • ${transactionsToExport.length} transactions shown • Currency: ${currency}`;
       footerText.style.margin = '0';
-      
+
       const confidentiality = document.createElement('p');
       confidentiality.textContent = 'This document contains confidential information. Unauthorized distribution is prohibited.';
       confidentiality.style.margin = '5px 0 0 0';
       confidentiality.style.fontStyle = 'italic';
-      
+
       footer.appendChild(footerText);
       footer.appendChild(confidentiality);
 
@@ -442,8 +579,8 @@ export const History = () => {
       });
 
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 190;
+      const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape mode for more columns
+      const imgWidth = 280;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       const pageHeight = pdf.internal.pageSize.height;
       let heightLeft = imgHeight;
@@ -460,15 +597,92 @@ export const History = () => {
       }
 
       // Save PDF
-      const fileName = `xash-transaction-history-${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `xash-transaction-history-${new Date().toISOString().split('T')[0]}${hasActiveFilters() ? '-filtered' : ''}.pdf`;
       pdf.save(fileName);
 
       // Clean up
       document.body.removeChild(container);
-      
+
     } catch (error) {
       console.error('PDF Export Error:', error);
       alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setExporting(false);
+      setExportFormat('');
+    }
+  };
+
+  // Export to Excel Function
+  const exportToExcel = async () => {
+    try {
+      setExporting(true);
+      setExportFormat('excel');
+      setExportDropdownOpen(false);
+
+      const transactionsToExport = filteredTransactions;
+
+      if (transactionsToExport.length === 0) {
+        alert('No transactions to export');
+        return;
+      }
+
+      const XLSX = await loadXLSX();
+
+      // Prepare data for Excel
+      const excelData = transactionsToExport.map(t => ({
+        'Date': formatDate(t.created_at),
+        'Time': formatTime(t.created_at),
+        'Reference': t.reference || t.id || 'N/A',
+        'Type': getTypeLabel(t.type),
+        'Description': t.name || t.type,
+        'Amount': `${getAmountPrefix(t.type)}$${formatAmount(t.amount)}`,
+        'Status': 'Completed',
+        'Currency': t.currency || currency
+      }));
+
+      // Add summary row
+      excelData.push({});
+      excelData.push({
+        'Date': 'SUMMARY',
+        'Time': '',
+        'Reference': '',
+        'Type': '',
+        'Description': 'Total Transactions:',
+        'Amount': transactionsToExport.length.toString(),
+        'Status': '',
+        'Currency': ''
+      });
+      excelData.push({
+        'Date': '',
+        'Time': '',
+        'Reference': '',
+        'Type': '',
+        'Description': 'Total Deposits:',
+        'Amount': `$${calculateTotal('deposit')}`,
+        'Status': '',
+        'Currency': ''
+      });
+      excelData.push({
+        'Date': '',
+        'Time': '',
+        'Reference': '',
+        'Type': '',
+        'Description': 'Total Commissions:',
+        'Amount': `$${calculateTotal('commission')}`,
+        'Status': '',
+        'Currency': ''
+      });
+
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Transaction History');
+
+      const fileName = `xash-transaction-history-${new Date().toISOString().split('T')[0]}${hasActiveFilters() ? '-filtered' : ''}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+
+    } catch (error) {
+      console.error('Excel Export Error:', error);
+      alert('Failed to generate Excel file. Please try again.');
     } finally {
       setExporting(false);
       setExportFormat('');
@@ -486,7 +700,7 @@ export const History = () => {
           <div className="h-4 w-4 bg-gray-700 rounded"></div>
           <div className="h-4 w-32 bg-gray-700 rounded"></div>
         </div>
-        
+
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
         </div>
@@ -519,7 +733,7 @@ export const History = () => {
       <div className="min-h-screen bg-gray-900">
         {/* Breadcrumb */}
         <nav className="flex items-center space-x-2 text-sm text-gray-400 mb-6">
-          <button 
+          <button
             onClick={() => navigate('/')}
             className="flex items-center space-x-1 hover:text-white transition-colors duration-200"
           >
@@ -541,10 +755,10 @@ export const History = () => {
               <p className="text-gray-400">View and manage your transaction records</p>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-3">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handleRefresh}
               loading={refreshing}
               className="flex items-center space-x-2"
@@ -552,11 +766,11 @@ export const History = () => {
               <RefreshCw className="w-4 h-4" />
               <span>Refresh</span>
             </Button>
-            
+
             {/* Export Dropdown */}
             <div className="relative" ref={exportRef}>
-              <Button 
-                variant="primary" 
+              <Button
+                variant="primary"
                 onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
                 loading={exporting}
                 className="flex items-center space-x-2"
@@ -565,21 +779,22 @@ export const History = () => {
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     <span>
-                      {exportFormat === 'pdf' ? 'Generating PDF...' : 'Export'}
+                      {exportFormat === 'pdf' ? 'Generating PDF...' :
+                        exportFormat === 'excel' ? 'Generating Excel...' : 'Exporting...'}
                     </span>
                   </>
                 ) : (
                   <>
                     <Download className="w-4 h-4" />
-                    <span>Export</span>
+                    <span>Export ({filteredTransactions.length})</span>
                     <ChevronDown className="w-4 h-4" />
                   </>
                 )}
               </Button>
-              
+
               {exportDropdownOpen && !exporting && (
                 <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50 py-1">
-                  <button 
+                  <button
                     onClick={exportToPDF}
                     className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-white hover:bg-gray-700 transition-colors duration-200"
                   >
@@ -588,7 +803,19 @@ export const History = () => {
                     </div>
                     <div className="text-left">
                       <div className="font-medium">Export as PDF</div>
-                      <div className="text-gray-400 text-xs">Professional document with logo</div>
+                      <div className="text-gray-400 text-xs">Professional document</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={exportToExcel}
+                    className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-white hover:bg-gray-700 transition-colors duration-200"
+                  >
+                    <div className="p-2 bg-green-500/20 rounded-lg">
+                      <FileText className="w-4 h-4 text-green-400" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-medium">Export as Excel</div>
+                      <div className="text-gray-400 text-xs">Spreadsheet format</div>
                     </div>
                   </button>
                 </div>
@@ -624,7 +851,19 @@ export const History = () => {
               <ArrowRightLeft className="w-6 h-6 text-blue-400" />
             </div>
             <h3 className="text-gray-400 text-sm mb-1">Total Transactions</h3>
-            <p className="text-xl font-bold text-white">{transactions.length}</p>
+            <p className="text-xl font-bold text-white">{filteredTransactions.length}</p>
+          </Card>
+
+          <Card className="p-4 text-center">
+            <div className="flex justify-center mb-2">
+              <Calendar className="w-6 h-6 text-orange-400" />
+            </div>
+            <h3 className="text-gray-400 text-sm mb-1">Date Range</h3>
+            <p className="text-sm font-bold text-white">
+              {dateRange.start && dateRange.end
+                ? `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`
+                : 'All Time'}
+            </p>
           </Card>
         </div>
 
@@ -636,7 +875,7 @@ export const History = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search transactions..."
+                placeholder="Search by type, amount, reference..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -664,7 +903,53 @@ export const History = () => {
                 </option>
               ))}
             </select>
+
+            {/* Date Filter Toggle */}
+            <Button
+              variant="outline"
+              onClick={() => setShowDateFilter(!showDateFilter)}
+              className="flex items-center space-x-2"
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Date Range</span>
+            </Button>
+
+            {/* Clear Filters */}
+            {hasActiveFilters() && (
+              <Button
+                variant="ghost"
+                onClick={clearFilters}
+                className="flex items-center space-x-2 text-red-400 hover:text-red-300"
+              >
+                <X className="w-4 h-4" />
+                <span>Clear Filters</span>
+              </Button>
+            )}
           </div>
+
+          {/* Date Range Filter */}
+          {showDateFilter && (
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-800/50 rounded-lg">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Transaction History */}
@@ -678,11 +963,11 @@ export const History = () => {
                 <h2 className="text-xl font-bold text-white">All Transactions</h2>
                 <p className="text-gray-400 text-sm">
                   {filteredTransactions.length} transactions found
-                  {filterType !== 'all' && ` in ${transactionTypes.find(t => t.value === filterType)?.label.toLowerCase()}`}
+                  {hasActiveFilters() && ' (filtered)'}
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4 text-sm">
               <div className="flex items-center space-x-3 flex-wrap gap-2">
                 <div className="flex items-center space-x-1">
@@ -707,38 +992,55 @@ export const History = () => {
 
           {/* Transactions List */}
           <div className="space-y-3">
-            {filteredTransactions.map((transaction) => {
+            {paginatedTransactions.map((transaction) => {
               const TransactionIcon = getTransactionIcon(transaction.type);
               const displayName = transaction.name || getTypeLabel(transaction.type);
-              
+              const reference = transaction.reference || transaction.id || 'N/A';
+
               return (
                 <div
                   key={transaction.id}
                   className="flex items-center justify-between p-4 rounded-lg hover:bg-gray-700/50 transition-colors duration-200 cursor-pointer group border border-gray-700/50"
                 >
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-4 flex-1">
                     <div className={`p-3 rounded-lg ${getTypeBgColor(transaction.type)} group-hover:scale-105 transition-transform duration-200`}>
                       <TransactionIcon className={`w-5 h-5 ${getTypeColor(transaction.type)}`} />
                     </div>
-                    <div>
-                      <p className="text-white font-medium group-hover:text-blue-300 transition-colors">
-                        {displayName}
-                      </p>
-                      <div className="flex items-center space-x-2 text-gray-400 text-sm">
-                        <Calendar className="w-3 h-3" />
-                        <span>
-                          {new Date(transaction.created_at).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <p className="text-white font-medium group-hover:text-blue-300 transition-colors">
+                          {displayName}
+                        </p>
+                        <button
+                          onClick={() => copyToClipboard(reference, transaction.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Copy reference"
+                        >
+                          {copiedId === transaction.id ? (
+                            <CheckCircle className="w-4 h-4 text-green-400" />
+                          ) : (
+                            <Copy className="w-4 h-4 text-gray-400 hover:text-white" />
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center space-x-4 text-gray-400 text-sm mt-1">
+                        <div className="flex items-center space-x-1">
+                          <Hash className="w-3 h-3" />
+                          <span className="font-mono text-xs">{reference}</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Calendar className="w-3 h-3" />
+                          <span>{formatDate(transaction.created_at)}</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Clock className="w-3 h-3" />
+                          <span>{formatTime(transaction.created_at)}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-4">
                     <div className="text-right">
                       <p className={`text-lg font-semibold ${getAmountColor(transaction.type)}`}>
@@ -760,25 +1062,73 @@ export const History = () => {
             <div className="text-center py-12">
               <Filter className="w-12 h-12 mx-auto mb-4 text-gray-600" />
               <h3 className="text-lg font-semibold text-gray-400 mb-2">
-                {searchTerm || filterType !== 'all' ? 'No matching transactions' : 'No transactions yet'}
+                {hasActiveFilters() ? 'No matching transactions' : 'No transactions yet'}
               </h3>
               <p className="text-gray-500 mb-4">
-                {searchTerm || filterType !== 'all' 
+                {hasActiveFilters()
                   ? 'Try adjusting your search or filter criteria'
                   : 'Your transactions will appear here once you start using the platform'
                 }
               </p>
-              {(searchTerm || filterType !== 'all') && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setSearchTerm('');
-                    setFilterType('all');
-                  }}
+              {hasActiveFilters() && (
+                <Button
+                  variant="outline"
+                  onClick={clearFilters}
                 >
                   Clear Filters
                 </Button>
               )}
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {filteredTransactions.length > 0 && totalPages > 1 && (
+            <div className="mt-6 pt-5 border-t border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <p className="text-gray-400 text-sm">
+                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredTransactions.length)} of {filteredTransactions.length} transactions
+              </p>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 rounded-lg text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                {/* Page number pills */}
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  // Show pages around current page
+                  let page;
+                  if (totalPages <= 5) {
+                    page = i + 1;
+                  } else if (currentPage <= 3) {
+                    page = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    page = totalPages - 4 + i;
+                  } else {
+                    page = currentPage - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-8 h-8 text-sm rounded-lg transition-colors ${page === currentPage
+                          ? 'bg-blue-600 text-white font-semibold'
+                          : 'bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700'
+                        }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 rounded-lg text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
 
@@ -787,7 +1137,8 @@ export const History = () => {
             <div className="mt-6 pt-6 border-t border-gray-700">
               <div className="flex items-center justify-between">
                 <p className="text-gray-400 text-sm">
-                  Need a copy of your transaction history? Use the Export button above to download as PDF.
+                  Export {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
+                  {hasActiveFilters() ? ' (filtered results)' : ' (all transactions)'}
                 </p>
                 <div className="flex space-x-2">
                   <button
@@ -795,7 +1146,14 @@ export const History = () => {
                     className="flex items-center space-x-2 px-4 py-2 text-sm bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg transition-colors"
                   >
                     <FileText className="w-4 h-4" />
-                    <span>Quick PDF</span>
+                    <span>Export PDF</span>
+                  </button>
+                  <button
+                    onClick={exportToExcel}
+                    className="flex items-center space-x-2 px-4 py-2 text-sm bg-green-500/20 text-green-400 hover:bg-green-500/30 rounded-lg transition-colors"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Export Excel</span>
                   </button>
                 </div>
               </div>
