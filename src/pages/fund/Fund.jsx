@@ -1,13 +1,14 @@
 // src/pages/fund/Fund.jsx
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../../components/ui/Card';
-import { 
-  Home, 
-  ChevronRight, 
+import {
+  Home,
+  ChevronRight,
   Wallet,
   Smartphone,
   Store,
-  ArrowRight
+  ArrowRight,
+  Phone
 } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 
@@ -42,6 +43,20 @@ export const Fund = () => {
         '15-minute validity'
       ],
       path: '/fund/innbucks'
+    },
+    {
+      id: 'omari',
+      name: 'OMari',
+      description: 'Mobile push payment — authorize directly from your phone',
+      icon: Phone,
+      color: 'orange',
+      features: [
+        'Direct mobile push notification',
+        'No reference codes needed',
+        'OTP confirmation if required',
+        'Instant deposit once authorized'
+      ],
+      path: '/fund/omari'
     }
   ];
 
@@ -58,6 +73,12 @@ export const Fund = () => {
         text: 'text-purple-400',
         border: 'border-purple-500/50',
         hover: 'hover:border-purple-500'
+      },
+      orange: {
+        bg: 'bg-orange-500/20',
+        text: 'text-orange-400',
+        border: 'border-orange-500/50',
+        hover: 'hover:border-orange-500'
       }
     };
     return colors[color] || colors.green;
@@ -72,7 +93,7 @@ export const Fund = () => {
       <div className="min-h-screen bg-gray-900">
         {/* Breadcrumb */}
         <nav className="flex items-center space-x-2 text-sm text-gray-400 mb-6">
-          <button 
+          <button
             onClick={() => navigate('/')}
             className="flex items-center space-x-1 hover:text-white transition-colors duration-200"
           >
@@ -99,7 +120,7 @@ export const Fund = () => {
           {fundingMethods.map((method) => {
             const Icon = method.icon;
             const colors = getColorClasses(method.color);
-            
+
             return (
               <Card
                 key={method.id}

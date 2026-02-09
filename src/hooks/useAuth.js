@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }) => {
           'Authorization': `Bearer ${authToken}`
         }
       });
-      
+
       if (response.success && response.data) {
         setUser(response.data);
         return true;
@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }) => {
         try {
           // Verify token is still valid and fetch user data
           const userDataValid = await fetchUserProfile(token);
-          
+
           if (!userDataValid) {
             // Token is invalid or user data couldn't be fetched
             throw new Error('Failed to fetch user data');
@@ -86,14 +86,14 @@ export const AuthProvider = ({ children }) => {
         method: 'POST',
         body: passwordData
       });
-      
+
       if (response.token) {
         setToken(response.token);
         localStorage.setItem('token', response.token);
         // Fetch user profile after setting password
         await fetchUserProfile(response.token);
       }
-      
+
       return response;
     } catch (error) {
       throw error;
@@ -117,15 +117,15 @@ export const AuthProvider = ({ children }) => {
         method: 'POST',
         body: credentials
       });
-      
+
       if (response.token) {
         setToken(response.token);
         localStorage.setItem('token', response.token);
-        
+
         // IMPORTANT: Fetch user profile after login
         await fetchUserProfile(response.token);
       }
-      
+
       return response;
     } catch (error) {
       throw error;
@@ -162,13 +162,13 @@ export const AuthProvider = ({ children }) => {
         },
         body: businessData
       });
-      
+
       // Update user data with business information
       if (response.success && response.data) {
         // Refresh user profile to get updated business data
         await fetchUserProfile(token);
       }
-      
+
       return response;
     } catch (error) {
       throw error;
@@ -216,6 +216,38 @@ export const AuthProvider = ({ children }) => {
           'Content-Type': 'application/json'
         },
         body: depositData
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const depositOmari = async (depositData) => {
+    try {
+      const response = await api.request('/omari/pay', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: depositData
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const confirmOmari = async (confirmData) => {
+    try {
+      const response = await api.request('/omari/confirm', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: confirmData
       });
       return response;
     } catch (error) {
@@ -306,7 +338,7 @@ export const AuthProvider = ({ children }) => {
       if (filters.currency) queryParams.append('currency', filters.currency);
       if (filters.network) queryParams.append('network', filters.network);
 
-      const endpoint = queryParams.toString() 
+      const endpoint = queryParams.toString()
         ? `/bundles?${queryParams.toString()}`
         : '/bundles';
 
@@ -451,116 +483,118 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Change password function
-const changePassword = async (passwordData) => {
-  try {
-    const response = await api.request('/auth/change-password', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: passwordData
-    });
-    return response;
-  } catch (error) {
-    throw error;
-  }
-};
+  const changePassword = async (passwordData) => {
+    try {
+      const response = await api.request('/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: passwordData
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
 
-// Server token functions
-const getServerTokens = async () => {
-  try {
-    const response = await api.request('/auth/server-tokens', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return response;
-  } catch (error) {
-    throw error;
-  }
-};
+  // Server token functions
+  const getServerTokens = async () => {
+    try {
+      const response = await api.request('/auth/server-tokens', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
 
-const createServerToken = async (tokenName) => {
-  try {
-    const response = await api.request('/auth/server-tokens', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: { name: tokenName }
-    });
-    return response;
-  } catch (error) {
-    throw error;
-  }
-};
+  const createServerToken = async (tokenName) => {
+    try {
+      const response = await api.request('/auth/server-tokens', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: { name: tokenName }
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
 
-const revokeServerToken = async (tokenId) => {
-  try {
-    const response = await api.request(`/auth/server-tokens/${tokenId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    return response;
-  } catch (error) {
-    throw error;
-  }
-};
+  const revokeServerToken = async (tokenId) => {
+    try {
+      const response = await api.request(`/auth/server-tokens/${tokenId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
 
   const value = {
     // User state
     user,
     token,
     loading,
-    
+
     // Authentication functions
     register,
     setPassword,
     resendUserNumber,
     login,
     logout,
-    
+
     // Business functions
     createBusiness,
-    
+
     // Wallet functions
     getWalletBalance,
-    
+
     // Deposit functions
     depositEcoCash,
     depositInnBucks,
+    depositOmari,
+    confirmOmari,
     checkDepositStatus,
-    
+
     // Airtime functions
     getAirtimeCarriers,
     buyDirectAirtime,
     getVoucherValues,
     buyVoucherAirtime,
-    
+
     // Bundles functions
     getBundles,
     buyDirectBundle,
     buyBundleVoucher,
-    
+
     // Electricity functions
     checkElectricityAccount,
     buyElectricityTokens,
-    
+
     // Transfer functions
     initiateTransfer,
     confirmTransfer,
-    
+
     // Reports functions
     getTransactionHistory,
     getCommissions,
-    
+
     // Utility functions
     fetchUserProfile,
 

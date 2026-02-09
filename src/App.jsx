@@ -25,6 +25,7 @@ import { Transfer } from './pages/payments/Transfer';
 import { Fund } from './pages/fund/Fund';
 import { EcoCash } from './pages/fund/Ecocash';
 import { InnBucks } from './pages/fund/InnBucks';
+import { Omari } from './pages/fund/Omari';
 import ChangePassword from './pages/ChangePassword';
 import ServerTokens from './pages/ServerTokens';
 
@@ -67,7 +68,7 @@ const AppRoutes = () => {
           <Route path="/commissions" element={<Commissions />} />
           <Route path="/wallet" element={<Wallet />} />
           <Route path="/profile" element={<Profile />} />
-          
+
           {/* Payment Routes */}
           <Route path="/payments" element={<Payments />} />
           <Route path="/payments/airtime" element={<Airtime />} />
@@ -75,15 +76,16 @@ const AppRoutes = () => {
           <Route path="/payments/electricity" element={<Electricity />} />
           <Route path="/payments/transfer" element={<Transfer />} />
 
-           {/* Fund Routes */}
+          {/* Fund Routes */}
           <Route path="/fund" element={<Fund />} />
           <Route path="/fund/ecocash" element={<EcoCash />} />
           <Route path="/fund/innbucks" element={<InnBucks />} />
+          <Route path="/fund/omari" element={<Omari />} />
 
           {/* Settings Routes */}
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/server-tokens" element={<ServerTokens />} />
-          
+
           {/* Fallback route */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -96,25 +98,25 @@ const AppRoutes = () => {
     <div className="min-h-screen bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-2xl">
         {authFlow.step === 'login' && (
-          <Login 
+          <Login
             onSuccess={() => {
               // Login successful - the useEffect will handle checking business profile
               // and redirecting to create-business if needed
-            }} 
+            }}
             onRegisterClick={() => setAuthFlow({ ...authFlow, step: 'register' })}
             onForgotUserNumber={() => setAuthFlow({ ...authFlow, step: 'resend-user-number' })}
           />
         )}
-        
+
         {authFlow.step === 'register' && (
-          <Register 
+          <Register
             onSuccess={(phone) => setAuthFlow({ ...authFlow, step: 'set-password', phone })}
             onLoginClick={() => setAuthFlow({ ...authFlow, step: 'login' })}
           />
         )}
-        
+
         {authFlow.step === 'set-password' && (
-          <SetPassword 
+          <SetPassword
             phone={authFlow.phone}
             onSuccess={() => {
               // After setting password, immediately go to business creation
@@ -125,14 +127,14 @@ const AppRoutes = () => {
         )}
 
         {authFlow.step === 'resend-user-number' && (
-          <ResendUserNumber 
+          <ResendUserNumber
             onSuccess={() => setAuthFlow({ ...authFlow, step: 'login' })}
             onBack={() => setAuthFlow({ ...authFlow, step: 'login' })}
           />
         )}
 
         {authFlow.step === 'create-business' && (
-          <CreateBusiness 
+          <CreateBusiness
             onSuccess={() => {
               // Business created successfully
               // The component will re-render and automatically show dashboard
