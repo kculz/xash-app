@@ -55,9 +55,16 @@ export const History = () => {
   const [copiedId, setCopiedId] = useState(null);
   const exportRef = useRef(null);
 
-  // Pagination
-  const ITEMS_PER_PAGE = 20;
+  // Server-side pagination
   const [currentPage, setCurrentPage] = useState(1);
+  const [paginationMeta, setPaginationMeta] = useState({
+    current_page: 1,
+    last_page: 1,
+    per_page: 15,
+    from: 1,
+    to: 1,
+    total: 0
+  });
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -72,14 +79,14 @@ export const History = () => {
   }, []);
 
   useEffect(() => {
-    fetchHistory();
+    fetchHistory(1);
   }, [currency]);
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (page = 1) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.request(`/reports/history/${currency}`, {
+      const response = await api.request(`/reports/history/${currency}?page=${page}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -90,6 +97,10 @@ export const History = () => {
 
       if (response.success && response.data) {
         setTransactions(response.data);
+        if (response.meta) {
+          setPaginationMeta(response.meta);
+        }
+        setCurrentPage(page);
       } else {
         setTransactions([]);
       }
@@ -106,9 +117,49 @@ export const History = () => {
     }
   };
 
+  // Fetch ALL pages for export
+  const fetchAllTransactions = async () => {
+    try {
+      // Fetch first page to get total pages
+      const firstPage = await api.request(`/reports/history/${currency}?page=1`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!firstPage.success || !firstPage.data) return [];
+
+      let allData = [...firstPage.data];
+      const lastPage = firstPage.meta?.last_page || 1;
+
+      // Fetch remaining pages in parallel
+      if (lastPage > 1) {
+        const pagePromises = [];
+        for (let p = 2; p <= lastPage; p++) {
+          pagePromises.push(
+            api.request(`/reports/history/${currency}?page=${p}`, {
+              method: 'GET',
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+          );
+        }
+        const pages = await Promise.all(pagePromises);
+        pages.forEach(page => {
+          if (page.success && page.data) {
+            allData = [...allData, ...page.data];
+          }
+        });
+      }
+
+      return allData;
+    } catch (error) {
+      console.error('Failed to fetch all transactions:', error);
+      throw error;
+    }
+  };
+
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchHistory();
+    fetchHistory(currentPage);
   };
 
   const copyToClipboard = (text, id) => {
@@ -241,9 +292,9 @@ export const History = () => {
     return labels[type] || type.replace(/_/g, ' ');
   };
 
-  // Filter transactions based on search, type, and date range
-  const getFilteredTransactions = () => {
-    return transactions.filter(transaction => {
+  // Filter transactions on the current page (for display purposes)
+  const applyFilters = (txns) => {
+    return txns.filter(transaction => {
       // Search filter
       const matchesSearch = searchTerm === '' ||
         transaction.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -261,7 +312,7 @@ export const History = () => {
         const transactionDate = new Date(transaction.created_at);
         const startDate = new Date(dateRange.start);
         const endDate = new Date(dateRange.end);
-        endDate.setHours(23, 59, 59, 999); // Include entire end day
+        endDate.setHours(23, 59, 59, 999);
         matchesDate = transactionDate >= startDate && transactionDate <= endDate;
       } else if (dateRange.start) {
         const transactionDate = new Date(transaction.created_at);
@@ -278,6 +329,8 @@ export const History = () => {
     });
   };
 
+  const getFilteredTransactions = () => applyFilters(transactions);
+
   const clearFilters = () => {
     setSearchTerm('');
     setFilterType('all');
@@ -291,14 +344,13 @@ export const History = () => {
 
   const filteredTransactions = getFilteredTransactions();
 
-  // Pagination derived state
+  // Server-side pagination values
+  const totalPages = paginationMeta.last_page || 1;
+  const totalRecords = paginationMeta.total || 0;
+
+  // When search/type/date filters change, reset to page 1 and re-fetch
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, filterType, dateRange.start, dateRange.end]);
-  const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE));
-  const paginatedTransactions = filteredTransactions.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  useEffect(() => { if (currentPage !== 1) fetchHistory(1); }, [searchTerm, filterType, dateRange.start, dateRange.end]);
 
   const transactionTypes = [
     { value: 'all', label: 'All Transactions' },
@@ -317,7 +369,9 @@ export const History = () => {
       setExportFormat('pdf');
       setExportDropdownOpen(false);
 
-      const transactionsToExport = filteredTransactions; // Export filtered transactions
+      // Fetch ALL pages then apply filters
+      const allTransactions = await fetchAllTransactions();
+      const transactionsToExport = applyFilters(allTransactions);
 
       if (transactionsToExport.length === 0) {
         alert('No transactions to export');
@@ -619,7 +673,9 @@ export const History = () => {
       setExportFormat('excel');
       setExportDropdownOpen(false);
 
-      const transactionsToExport = filteredTransactions;
+      // Fetch ALL pages then apply filters
+      const allTransactions = await fetchAllTransactions();
+      const transactionsToExport = applyFilters(allTransactions);
 
       if (transactionsToExport.length === 0) {
         alert('No transactions to export');
@@ -786,7 +842,7 @@ export const History = () => {
                 ) : (
                   <>
                     <Download className="w-4 h-4" />
-                    <span>Export ({filteredTransactions.length})</span>
+                    <span>Export ({totalRecords})</span>
                     <ChevronDown className="w-4 h-4" />
                   </>
                 )}
@@ -851,7 +907,7 @@ export const History = () => {
               <ArrowRightLeft className="w-6 h-6 text-blue-400" />
             </div>
             <h3 className="text-gray-400 text-sm mb-1">Total Transactions</h3>
-            <p className="text-xl font-bold text-white">{filteredTransactions.length}</p>
+            <p className="text-xl font-bold text-white">{totalRecords}</p>
           </Card>
 
           <Card className="p-4 text-center">
@@ -962,7 +1018,7 @@ export const History = () => {
               <div>
                 <h2 className="text-xl font-bold text-white">All Transactions</h2>
                 <p className="text-gray-400 text-sm">
-                  {filteredTransactions.length} transactions found
+                  {totalRecords} transactions found
                   {hasActiveFilters() && ' (filtered)'}
                 </p>
               </div>
@@ -992,7 +1048,7 @@ export const History = () => {
 
           {/* Transactions List */}
           <div className="space-y-3">
-            {paginatedTransactions.map((transaction) => {
+            {filteredTransactions.map((transaction) => {
               const TransactionIcon = getTransactionIcon(transaction.type);
               const displayName = transaction.name || getTypeLabel(transaction.type);
               const reference = transaction.reference || transaction.id || 'N/A';
@@ -1058,7 +1114,7 @@ export const History = () => {
           </div>
 
           {/* Empty State */}
-          {filteredTransactions.length === 0 && (
+          {filteredTransactions.length === 0 && !loading && (
             <div className="text-center py-12">
               <Filter className="w-12 h-12 mx-auto mb-4 text-gray-600" />
               <h3 className="text-lg font-semibold text-gray-400 mb-2">
@@ -1082,22 +1138,21 @@ export const History = () => {
           )}
 
           {/* Pagination Controls */}
-          {filteredTransactions.length > 0 && totalPages > 1 && (
+          {totalPages > 1 && (
             <div className="mt-6 pt-5 border-t border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <p className="text-gray-400 text-sm">
-                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredTransactions.length)} of {filteredTransactions.length} transactions
+                Showing {paginationMeta.from || 1}–{paginationMeta.to || filteredTransactions.length} of {totalRecords} transactions
               </p>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
+                  onClick={() => fetchHistory(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1 || loading}
                   className="px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 rounded-lg text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   Previous
                 </button>
                 {/* Page number pills */}
                 {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                  // Show pages around current page
                   let page;
                   if (totalPages <= 5) {
                     page = i + 1;
@@ -1111,10 +1166,11 @@ export const History = () => {
                   return (
                     <button
                       key={page}
-                      onClick={() => setCurrentPage(page)}
+                      onClick={() => fetchHistory(page)}
+                      disabled={loading}
                       className={`w-8 h-8 text-sm rounded-lg transition-colors ${page === currentPage
-                          ? 'bg-blue-600 text-white font-semibold'
-                          : 'bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700'
+                        ? 'bg-blue-600 text-white font-semibold'
+                        : 'bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700'
                         }`}
                     >
                       {page}
@@ -1122,8 +1178,8 @@ export const History = () => {
                   );
                 })}
                 <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => fetchHistory(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages || loading}
                   className="px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 rounded-lg text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   Next
@@ -1133,12 +1189,12 @@ export const History = () => {
           )}
 
           {/* Export Note */}
-          {filteredTransactions.length > 0 && (
+          {totalRecords > 0 && (
             <div className="mt-6 pt-6 border-t border-gray-700">
               <div className="flex items-center justify-between">
                 <p className="text-gray-400 text-sm">
-                  Export {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
-                  {hasActiveFilters() ? ' (filtered results)' : ' (all transactions)'}
+                  Export all {totalRecords} transaction{totalRecords !== 1 ? 's' : ''}
+                  {hasActiveFilters() ? ' (filtered results)' : ' (complete history)'}
                 </p>
                 <div className="flex space-x-2">
                   <button
