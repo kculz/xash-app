@@ -66,6 +66,10 @@ export const History = () => {
     total: 0
   });
 
+  // Client-side all data for filtering
+  const [allTransactionsData, setAllTransactionsData] = useState(null);
+  const ITEMS_PER_PAGE = 20;
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -342,15 +346,53 @@ export const History = () => {
     return searchTerm !== '' || filterType !== 'all' || dateRange.start !== '' || dateRange.end !== '';
   };
 
-  const filteredTransactions = getFilteredTransactions();
+  // Determine which transactions to display and pagination info
+  let transactionsToDisplay = [];
+  let totalRecords = 0;
+  let totalPages = 1;
 
-  // Server-side pagination values
-  const totalPages = paginationMeta.last_page || 1;
-  const totalRecords = paginationMeta.total || 0;
+  if (hasActiveFilters() && allTransactionsData) {
+    const fullyFiltered = applyFilters(allTransactionsData);
+    totalRecords = fullyFiltered.length;
+    totalPages = Math.max(1, Math.ceil(totalRecords / ITEMS_PER_PAGE));
+    transactionsToDisplay = fullyFiltered.slice(
+      (currentPage - 1) * ITEMS_PER_PAGE,
+      currentPage * ITEMS_PER_PAGE
+    );
+  } else {
+    // Unfiltered: use server pagination
+    transactionsToDisplay = transactions;
+    totalRecords = paginationMeta.total || 0;
+    totalPages = paginationMeta.last_page || 1;
+  }
 
-  // When search/type/date filters change, reset to page 1 and re-fetch
+  // Effect to handle switching between filtered and unfiltered states
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (currentPage !== 1) fetchHistory(1); }, [searchTerm, filterType, dateRange.start, dateRange.end]);
+  useEffect(() => {
+    const handleFiltersChanged = async () => {
+      if (hasActiveFilters()) {
+        if (!allTransactionsData) {
+          setLoading(true);
+          try {
+            const allData = await fetchAllTransactions();
+            setAllTransactionsData(allData);
+          } catch (error) {
+            console.error(error);
+          }
+          setLoading(false);
+        }
+        setCurrentPage(1);
+      } else {
+        // No filters: fallback to standard server pagination
+        if (currentPage !== 1) {
+          fetchHistory(1);
+        } else {
+          fetchHistory(currentPage);
+        }
+      }
+    };
+    handleFiltersChanged();
+  }, [searchTerm, filterType, dateRange.start, dateRange.end]);
 
   const transactionTypes = [
     { value: 'all', label: 'All Transactions' },
@@ -842,7 +884,7 @@ export const History = () => {
                 ) : (
                   <>
                     <Download className="w-4 h-4" />
-                    <span>Export ({totalRecords})</span>
+                    <span>Export ({hasActiveFilters() && allTransactionsData ? applyFilters(allTransactionsData).length : totalRecords})</span>
                     <ChevronDown className="w-4 h-4" />
                   </>
                 )}
@@ -1048,7 +1090,7 @@ export const History = () => {
 
           {/* Transactions List */}
           <div className="space-y-3">
-            {filteredTransactions.map((transaction) => {
+            {transactionsToDisplay.map((transaction) => {
               const TransactionIcon = getTransactionIcon(transaction.type);
               const displayName = transaction.name || getTypeLabel(transaction.type);
               const reference = transaction.reference || transaction.id || 'N/A';
@@ -1114,7 +1156,7 @@ export const History = () => {
           </div>
 
           {/* Empty State */}
-          {filteredTransactions.length === 0 && !loading && (
+          {transactionsToDisplay.length === 0 && !loading && (
             <div className="text-center py-12">
               <Filter className="w-12 h-12 mx-auto mb-4 text-gray-600" />
               <h3 className="text-lg font-semibold text-gray-400 mb-2">
@@ -1141,11 +1183,23 @@ export const History = () => {
           {totalPages > 1 && (
             <div className="mt-6 pt-5 border-t border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <p className="text-gray-400 text-sm">
-                Showing {paginationMeta.from || 1}–{paginationMeta.to || filteredTransactions.length} of {totalRecords} transactions
+                Showing {
+                  hasActiveFilters()
+                    ? (currentPage - 1) * ITEMS_PER_PAGE + 1
+                    : paginationMeta.from || 1
+                }–{
+                  hasActiveFilters()
+                    ? Math.min(currentPage * ITEMS_PER_PAGE, totalRecords)
+                    : paginationMeta.to || transactionsToDisplay.length
+                } of {totalRecords} transactions
               </p>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => fetchHistory(Math.max(1, currentPage - 1))}
+                  onClick={() => {
+                    const prevPage = Math.max(1, currentPage - 1);
+                    if (hasActiveFilters()) setCurrentPage(prevPage);
+                    else fetchHistory(prevPage);
+                  }}
                   disabled={currentPage === 1 || loading}
                   className="px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 rounded-lg text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
@@ -1166,7 +1220,10 @@ export const History = () => {
                   return (
                     <button
                       key={page}
-                      onClick={() => fetchHistory(page)}
+                      onClick={() => {
+                        if (hasActiveFilters()) setCurrentPage(page);
+                        else fetchHistory(page);
+                      }}
                       disabled={loading}
                       className={`w-8 h-8 text-sm rounded-lg transition-colors ${page === currentPage
                         ? 'bg-blue-600 text-white font-semibold'
@@ -1178,7 +1235,11 @@ export const History = () => {
                   );
                 })}
                 <button
-                  onClick={() => fetchHistory(Math.min(totalPages, currentPage + 1))}
+                  onClick={() => {
+                    const nextPage = Math.min(totalPages, currentPage + 1);
+                    if (hasActiveFilters()) setCurrentPage(nextPage);
+                    else fetchHistory(nextPage);
+                  }}
                   disabled={currentPage === totalPages || loading}
                   className="px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 rounded-lg text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
