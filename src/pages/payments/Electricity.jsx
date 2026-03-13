@@ -5,7 +5,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
-import { SuccessModal, ErrorModal } from '../../components/ui/Modal';
+import { SuccessModal, ErrorModal, ConfirmationModal } from '../../components/ui/Modal';
+import { ToolStrip } from '../../components/ui/ToolStrip';
 import { 
   Zap, 
   ArrowLeft, 
@@ -23,7 +24,7 @@ import { useNavigate } from 'react-router-dom';
 
 export const Electricity = () => {
   const { token, getWalletBalance, checkElectricityAccount, buyElectricityTokens } = useAuth();
-  const { success, error, loading: toastLoading } = useToast();
+  const { success, error: toastError, loading: toastLoading } = useToast();
   const navigate = useNavigate();
   
   const [step, setStep] = useState('check'); // 'check' or 'purchase'
@@ -32,7 +33,9 @@ export const Electricity = () => {
   // Modal states
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [modalData, setModalData] = useState({});
+  const [formError, setFormError] = useState(null);
 
   const [accountInfo, setAccountInfo] = useState(null);
 
@@ -73,8 +76,18 @@ export const Electricity = () => {
     }
   };
 
-  const handlePurchaseTokens = async (e) => {
+  const handlePurchaseTokens = (e) => {
     e.preventDefault();
+    setModalData({
+      title: 'Confirm Electricity Purchase',
+      message: `Are you sure you want to purchase electricity tokens for ${accountInfo.customer_name} (${checkForm.meter_number}) for ${checkForm.amount} USD?`,
+      confirmAction: executePurchaseTokens
+    });
+    setShowConfirmModal(true);
+  };
+
+  const executePurchaseTokens = async () => {
+    setShowConfirmModal(false);
     setLoading(true);
 
     try {
@@ -88,6 +101,7 @@ export const Electricity = () => {
       const response = await buyElectricityTokens(tokenData);
 
       if (response.success) {
+        success('Electricity tokens purchased successfully!');
         // Show success modal with purchase details
         setModalData({
           title: 'Tokens Purchased Successfully!',
@@ -126,6 +140,7 @@ export const Electricity = () => {
   const handleModalClose = () => {
     setShowSuccessModal(false);
     setShowErrorModal(false);
+    setShowConfirmModal(false);
     setModalData({});
   };
 
@@ -258,7 +273,17 @@ ${modalData.purchaseDetails.receipt_footer || 'Thank you for using Xash!'}
       {/* Check Account Step */}
       {step === 'check' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Check Account Form */}
+          {/* Error Display */}
+          {formError && (
+            <ToolStrip 
+              type="error" 
+              message={formError} 
+              onClose={() => setFormError(null)} 
+              className="mb-6"
+            />
+          )}
+
+          {/* Verification Form */}
           <Card>
             <form onSubmit={handleCheckAccount}>
               <div className="space-y-6">
@@ -819,6 +844,15 @@ ${modalData.purchaseDetails.receipt_footer || 'Thank you for using Xash!'}
             Try Again
           </Button>
         }
+      />
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={handleModalClose}
+        title={modalData.title}
+        message={modalData.message}
+        onConfirm={modalData.confirmAction}
+        isLoading={loading}
       />
     </div>
   );

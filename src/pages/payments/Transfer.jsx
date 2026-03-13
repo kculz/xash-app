@@ -6,6 +6,7 @@ import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import { SuccessModal, ErrorModal, ConfirmationModal } from '../../components/ui/Modal';
+import { ToolStrip } from '../../components/ui/ToolStrip';
 import { api } from '../../utils/api';
 import { 
   Send, 
@@ -25,7 +26,7 @@ import { useNavigate } from 'react-router-dom';
 
 export const Transfer = () => {
   const { token, user, getWalletBalance } = useAuth();
-  const { success, error, loading: toastLoading } = useToast();
+  const { success, error: toastError, loading: toastLoading } = useToast();
   const navigate = useNavigate();
   
   const [step, setStep] = useState('initiate'); // 'initiate' or 'confirm'
@@ -37,6 +38,7 @@ export const Transfer = () => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [modalData, setModalData] = useState({});
+  const [formError, setFormError] = useState(null);
 
   const [transferData, setTransferData] = useState(null);
 
@@ -95,23 +97,23 @@ export const Transfer = () => {
         setTransferData(response.data);
         setStep('confirm');
         success('Transfer initiated successfully! Please confirm the details.');
+      } else {
+        setFormError(response.message || 'Failed to initiate transfer. Please check the details.');
       }
     } catch (error) {
-      setModalData({
-        title: 'Transfer Failed',
-        message: error.message || 'There was an error initiating the transfer. Please try again.'
-      });
-      setShowErrorModal(true);
+      setFormError(error.message || 'There was an error initiating the transfer. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleConfirmTransfer = async () => {
+    setShowConfirmModal(false);
     setLoading(true);
+    setFormError(null);
 
     try {
-      const response = await api.request(`/transfer/confirm/${transferData.id}`, {
+      const response = await api.request(`/transfer/${transferData.id}/confirm`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -120,6 +122,7 @@ export const Transfer = () => {
       });
 
       if (response.success) {
+        success('Transfer completed successfully!');
         // Transfer completed successfully
         const result = response.data;
         setTransferData(prev => ({ ...prev, completed: true, result }));
@@ -299,6 +302,16 @@ Thank you for using Xash!
       {/* Initiate Transfer Step */}
       {step === 'initiate' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Error Display */}
+          {formError && (
+            <ToolStrip 
+              type="error" 
+              message={formError} 
+              onClose={() => setFormError(null)} 
+              className="mb-6"
+            />
+          )}
+
           {/* Transfer Form */}
           <Card>
             <form onSubmit={handleInitiateTransfer}>

@@ -5,7 +5,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
-import { SuccessModal, ErrorModal } from '../../components/ui/Modal';
+import { SuccessModal, ErrorModal, ConfirmationModal } from '../../components/ui/Modal';
+import { ToolStrip } from '../../components/ui/ToolStrip';
 import { api } from '../../utils/api';
 import { 
   Smartphone, 
@@ -20,7 +21,7 @@ import { useNavigate } from 'react-router-dom';
 
 export const Airtime = () => {
   const { token, getWalletBalance } = useAuth();
-  const { success, error, loading: toastLoading } = useToast();
+  const { success, error: toastError, loading: toastLoading } = useToast();
   const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState('direct');
@@ -32,7 +33,9 @@ export const Airtime = () => {
   // Modal states
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [modalData, setModalData] = useState({});
+  const [formError, setFormError] = useState(null);
 
   // Direct airtime form state
   const [directForm, setDirectForm] = useState({
@@ -67,7 +70,7 @@ export const Airtime = () => {
       }
     } catch (error) {
       console.error('Failed to fetch carriers:', error);
-      error('Failed to load carriers. Please try again.');
+      toastError('Failed to load carriers. Please try again.');
     }
   };
 
@@ -85,13 +88,24 @@ export const Airtime = () => {
       }
     } catch (error) {
       console.error('Failed to fetch voucher values:', error);
-      error('Failed to load voucher values. Please try again.');
+      toastError('Failed to load voucher values. Please try again.');
     }
   };
 
-  const handleDirectAirtime = async (e) => {
+  const handleDirectAirtime = (e) => {
     e.preventDefault();
+    setModalData({
+      title: 'Confirm Airtime Purchase',
+      message: `Are you sure you want to recharge ${directForm.mobile_phone} with ${directForm.amount} USD?`,
+      confirmAction: executeDirectAirtime
+    });
+    setShowConfirmModal(true);
+  };
+
+  const executeDirectAirtime = async () => {
+    setShowConfirmModal(false);
     setLoading(true);
+    setFormError(null);
 
     try {
       const response = await api.request('/airtime/direct', {
@@ -107,6 +121,7 @@ export const Airtime = () => {
       });
 
       if (response.success) {
+        success('Airtime recharge processed successfully!');
         // Show success modal with transaction details
         setModalData({
           title: 'Airtime Purchase Successful!',
@@ -133,9 +148,21 @@ export const Airtime = () => {
     }
   };
 
-  const handleVoucherAirtime = async (e) => {
+  const handleVoucherAirtime = (e) => {
     e.preventDefault();
+    const selectedCarrierName = carriers.find(c => c.id === parseInt(selectedCarrier))?.name || 'Carrier';
+    setModalData({
+      title: 'Confirm Voucher Purchase',
+      message: `Are you sure you want to purchase ${voucherForm.quantity} voucher(s) for ${selectedCarrierName} with a total value of ${Number(voucherForm.amount) * Number(voucherForm.quantity)} USD?`,
+      confirmAction: executeVoucherAirtime
+    });
+    setShowConfirmModal(true);
+  };
+
+  const executeVoucherAirtime = async () => {
+    setShowConfirmModal(false);
     setLoading(true);
+    setFormError(null);
 
     try {
       const response = await api.request(`/airtime/direct/voucher/${selectedCarrier}`, {
@@ -151,6 +178,7 @@ export const Airtime = () => {
       });
 
       if (response.success) {
+        success('Voucher purchase successful!');
         const selectedCarrierName = carriers.find(c => c.id === parseInt(selectedCarrier))?.name || 'Carrier';
         
         setModalData({
@@ -193,6 +221,7 @@ export const Airtime = () => {
   const handleModalClose = () => {
     setShowSuccessModal(false);
     setShowErrorModal(false);
+    setShowConfirmModal(false);
     setModalData({});
   };
 
@@ -431,6 +460,16 @@ export const Airtime = () => {
             Try Again
           </Button>
         }
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={handleModalClose}
+        title={modalData.title}
+        message={modalData.message}
+        onConfirm={modalData.confirmAction}
+        isLoading={loading}
       />
     </div>
   );

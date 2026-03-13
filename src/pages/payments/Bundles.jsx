@@ -5,7 +5,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
-import { SuccessModal, ErrorModal } from '../../components/ui/Modal';
+import { SuccessModal, ErrorModal, ConfirmationModal } from '../../components/ui/Modal';
+import { ToolStrip } from '../../components/ui/ToolStrip';
 import { api } from '../../utils/api';
 import { 
   Wifi, 
@@ -31,7 +32,7 @@ import { useNavigate } from 'react-router-dom';
 
 export const Bundles = () => {
   const { token, getWalletBalance } = useAuth();
-  const { success, error, loading: toastLoading } = useToast();
+  const { success, error: toastError, loading: toastLoading } = useToast();
   const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState('direct');
@@ -43,7 +44,9 @@ export const Bundles = () => {
   // Modal states
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [modalData, setModalData] = useState({});
+  const [formError, setFormError] = useState(null);
 
   const [filters, setFilters] = useState({
     network: '',
@@ -93,7 +96,7 @@ export const Bundles = () => {
       }
     } catch (error) {
       console.error('Failed to fetch bundles:', error);
-      error('Failed to load bundles. Please try again.');
+      toastError('Failed to load bundles. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -193,8 +196,19 @@ export const Bundles = () => {
 
   const durations = ['Daily', 'Weekly', 'Monthly'];
 
-  const handleDirectBundle = async (e) => {
+  const handleDirectBundle = (e) => {
     e.preventDefault();
+    const selectedBundle = bundles.find(b => b.id === parseInt(directForm.bundle));
+    setModalData({
+      title: 'Confirm Bundle Purchase',
+      message: `Are you sure you want to purchase the ${selectedBundle?.name} bundle for ${directForm.mobile_phone} at a cost of ${selectedBundle?.price} USD?`,
+      confirmAction: executeDirectBundle
+    });
+    setShowConfirmModal(true);
+  };
+
+  const executeDirectBundle = async () => {
+    setShowConfirmModal(false);
     setLoading(true);
 
     try {
@@ -212,6 +226,7 @@ export const Bundles = () => {
       });
 
       if (response.success) {
+        success('Bundle application successful!');
         setModalData({
           title: 'Bundle Purchase Successful!',
           message: `Your ${selectedBundle?.name} bundle has been successfully applied to ${directForm.mobile_phone}.`,
@@ -243,8 +258,19 @@ export const Bundles = () => {
     }
   };
 
-  const handleVoucherBundle = async (e) => {
+  const handleVoucherBundle = (e) => {
     e.preventDefault();
+    const selectedBundle = bundles.find(b => b.id === parseInt(voucherForm.bundle));
+    setModalData({
+      title: 'Confirm Voucher Purchase',
+      message: `Are you sure you want to purchase ${voucherForm.quantity} ${selectedBundle?.name} voucher(s) for a total of ${(selectedBundle?.price * voucherForm.quantity).toFixed(2)} USD?`,
+      confirmAction: executeVoucherBundle
+    });
+    setShowConfirmModal(true);
+  };
+
+  const executeVoucherBundle = async () => {
+    setShowConfirmModal(false);
     setLoading(true);
 
     try {
@@ -262,6 +288,7 @@ export const Bundles = () => {
       });
 
       if (response.success) {
+        success('Voucher purchase successful!');
         const vouchers = response.data?.vouchers || [];
         
         setModalData({
@@ -322,7 +349,7 @@ export const Bundles = () => {
     const selectedBundle = bundles.find(b => b.id === parseInt(bundleId));
     
     if (!selectedBundle) {
-      error('Bundle not found');
+      toastError('Bundle not found');
       return;
     }
 
@@ -384,6 +411,7 @@ export const Bundles = () => {
   const handleModalClose = () => {
     setShowSuccessModal(false);
     setShowErrorModal(false);
+    setShowConfirmModal(false);
     setModalData({});
   };
 
@@ -423,6 +451,16 @@ export const Bundles = () => {
           </div>
         </div>
       </div>
+
+      {/* Error Display */}
+      {formError && (
+        <ToolStrip 
+          type="error" 
+          message={formError} 
+          onClose={() => setFormError(null)} 
+          className="mb-6"
+        />
+      )}
 
       {/* Tabs */}
       <Card className="mb-6">
@@ -1233,6 +1271,15 @@ export const Bundles = () => {
             Try Again
           </Button>
         }
+      />
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={handleModalClose}
+        title={modalData.title}
+        message={modalData.message}
+        onConfirm={modalData.confirmAction}
+        isLoading={loading}
       />
     </div>
   );
