@@ -451,6 +451,12 @@ export const History = () => {
       logoImg.style.width = '80px';
       logoImg.style.marginRight = '15px';
 
+      // Wait for logo to load to avoid html2canvas race condition
+      await new Promise((resolve) => {
+        logoImg.onload = resolve;
+        logoImg.onerror = resolve; // Continue even if logo fails
+      });
+
       // Title section
       const titleDiv = document.createElement('div');
       titleDiv.style.flex = '1';
@@ -724,7 +730,8 @@ export const History = () => {
         return;
       }
 
-      const XLSX = await loadXLSX();
+      const XLSXModule = await loadXLSX();
+      const XLSX = XLSXModule.default || XLSXModule;
 
       // Prepare data for Excel
       const excelData = transactionsToExport.map(t => ({
