@@ -135,23 +135,17 @@ export const History = () => {
       let allData = [...firstPage.data];
       const lastPage = firstPage.meta?.last_page || 1;
 
-      // Fetch remaining pages in parallel
+      // Fetch remaining pages sequentially to avoid parallel request failures
       if (lastPage > 1) {
-        const pagePromises = [];
         for (let p = 2; p <= lastPage; p++) {
-          pagePromises.push(
-            api.request(`/reports/history/${currency}?page=${p}`, {
-              method: 'GET',
-              headers: { 'Authorization': `Bearer ${token}` }
-            })
-          );
-        }
-        const pages = await Promise.all(pagePromises);
-        pages.forEach(page => {
-          if (page.success && page.data) {
-            allData = [...allData, ...page.data];
+          const pageResponse = await api.request(`/reports/history/${currency}?page=${p}`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (pageResponse.success && pageResponse.data) {
+            allData = [...allData, ...pageResponse.data];
           }
-        });
+        }
       }
 
       return allData;
@@ -426,284 +420,190 @@ export const History = () => {
         loadHTML2Canvas()
       ]);
 
-      // Create a temporary container for PDF generation
-      const container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.left = '-9999px';
-      container.style.top = '-9999px';
-      container.style.width = '800px';
-      container.style.backgroundColor = 'white';
-      container.style.padding = '20px';
-      container.style.color = 'black';
-      container.style.fontFamily = 'Arial, sans-serif';
+      const CHUNK_SIZE = 25; // number of rows per page
+      const totalChunks = Math.ceil(transactionsToExport.length / CHUNK_SIZE);
 
-      // Header with logo
-      const header = document.createElement('div');
-      header.style.display = 'flex';
-      header.style.alignItems = 'center';
-      header.style.marginBottom = '20px';
-      header.style.borderBottom = '2px solid #3b82f6';
-      header.style.paddingBottom = '20px';
+      const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape A4
+      const imgWidth = 277; // fits standard padding (297 - 20)
 
-      // Logo
-      const logoImg = document.createElement('img');
-      logoImg.src = logo;
-      logoImg.style.width = '80px';
-      logoImg.style.marginRight = '15px';
+      for (let c = 0; c < totalChunks; c++) {
+        const startIdx = c * CHUNK_SIZE;
+        const endIdx = Math.min(startIdx + CHUNK_SIZE, transactionsToExport.length);
+        const chunkRows = transactionsToExport.slice(startIdx, endIdx);
 
-      // Wait for logo to load to avoid html2canvas race condition
-      await new Promise((resolve) => {
-        logoImg.onload = resolve;
-        logoImg.onerror = resolve; // Continue even if logo fails
-      });
+        // Create temporary container
+        const container = document.createElement('div');
+        container.style.position = 'absolute';
+        container.style.left = '-9999px';
+        container.style.top = '-9999px';
+        container.style.width = '1000px'; 
+        container.style.backgroundColor = 'white';
+        container.style.padding = '20px';
+        container.style.color = 'black';
+        container.style.fontFamily = 'Arial, sans-serif';
 
-      // Title section
-      const titleDiv = document.createElement('div');
-      titleDiv.style.flex = '1';
+        // HEADER
+        const header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.alignItems = 'center';
+        header.style.marginBottom = '20px';
+        header.style.borderBottom = '2px solid #3b82f6';
+        header.style.paddingBottom = '20px';
 
-      const title = document.createElement('h1');
-      title.textContent = 'Xash Transaction History';
-      title.style.color = '#1e40af';
-      title.style.margin = '0';
-      title.style.fontSize = '24px';
-      title.style.fontWeight = 'bold';
+        const logoImg = document.createElement('img');
+        logoImg.src = logo;
+        logoImg.style.width = '60px'; 
+        logoImg.style.marginRight = '15px';
 
-      const subtitle = document.createElement('p');
-      subtitle.textContent = `Generated on ${formatDateTime(new Date())}`;
-      subtitle.style.color = '#6b7280';
-      subtitle.style.margin = '5px 0 0 0';
-      subtitle.style.fontSize = '12px';
-
-      const userInfo = document.createElement('p');
-      userInfo.textContent = `User: ${user?.first_name || 'N/A'} ${user?.last_name || ''} | Email: ${user?.email || 'N/A'}`;
-      userInfo.style.color = '#6b7280';
-      userInfo.style.margin = '5px 0 0 0';
-      userInfo.style.fontSize = '12px';
-
-      // Filter info if any filters are applied
-      if (hasActiveFilters()) {
-        const filterInfo = document.createElement('p');
-        let filterText = 'Filters: ';
-        if (searchTerm) filterText += `Search "${searchTerm}" `;
-        if (filterType !== 'all') filterText += `Type: ${filterType} `;
-        if (dateRange.start || dateRange.end) {
-          filterText += `Date: ${dateRange.start || '...'} to ${dateRange.end || '...'}`;
+        // Wait for logo to load ONLY on first page to prevent freeze
+        if (c === 0) {
+          await new Promise((resolve) => {
+            logoImg.onload = resolve;
+            logoImg.onerror = resolve;
+          });
         }
-        filterInfo.textContent = filterText;
-        filterInfo.style.color = '#6b7280';
-        filterInfo.style.margin = '5px 0 0 0';
-        filterInfo.style.fontSize = '11px';
-        filterInfo.style.fontStyle = 'italic';
-        titleDiv.appendChild(filterInfo);
+
+        const titleDiv = document.createElement('div');
+        titleDiv.style.flex = '1';
+
+        const title = document.createElement('h1');
+        title.textContent = 'Xash Transaction History';
+        title.style.color = '#1e40af';
+        title.style.margin = '0';
+        title.style.fontSize = '24px';
+        title.style.fontWeight = 'bold';
+
+        const subtitle = document.createElement('p');
+        subtitle.textContent = `Generated on ${formatDateTime(new Date())} | Page ${c + 1} of ${totalChunks}`;
+        subtitle.style.color = '#6b7280';
+        subtitle.style.margin = '5px 0 0 0';
+        subtitle.style.fontSize = '12px';
+
+        titleDiv.appendChild(title);
+        titleDiv.appendChild(subtitle);
+        header.appendChild(logoImg);
+        header.appendChild(titleDiv);
+        container.appendChild(header);
+
+        // SUMMARY (Only on Page 1)
+        if (c === 0) {
+          const summary = document.createElement('div');
+          summary.style.display = 'grid';
+          summary.style.gridTemplateColumns = 'repeat(4, 1fr)';
+          summary.style.gap = '10px';
+          summary.style.marginBottom = '20px';
+          summary.style.padding = '15px';
+          summary.style.backgroundColor = '#f8fafc';
+          summary.style.borderRadius = '8px';
+          summary.style.border = '1px solid #e2e8f0';
+
+          const summaryItems = [
+            { label: 'Total Deposits', value: `$${calculateTotal('deposit')}`, color: '#10b981' },
+            { label: 'Total Commissions', value: `$${calculateTotal('commission')}`, color: '#8b5cf6' },
+            { label: 'Total Transactions', value: transactionsToExport.length.toString(), color: '#3b82f6' },
+            { label: 'Date Range', value: dateRange.start && dateRange.end ? `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}` : 'All Time', color: '#64748b' }
+          ];
+
+          summaryItems.forEach(item => {
+            const itemDiv = document.createElement('div');
+            itemDiv.style.textAlign = 'center';
+            const value = document.createElement('div');
+            value.textContent = item.value;
+            value.style.fontSize = '18px';
+            value.style.fontWeight = 'bold';
+            value.style.color = item.color;
+            itemDiv.appendChild(value);
+            const label = document.createElement('div');
+            label.textContent = item.label;
+            label.style.fontSize = '12px';
+            label.style.color = '#64748b';
+            itemDiv.appendChild(label);
+            summary.appendChild(itemDiv);
+          });
+          container.appendChild(summary);
+        }
+
+        // TABLE
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        table.style.marginTop = '20px';
+        table.style.fontSize = '11px';
+
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        headerRow.style.backgroundColor = '#3b82f6';
+        headerRow.style.color = 'white';
+
+        const headers = ['Date', 'Time', 'Reference', 'Type', 'Description', 'Amount', 'Status'];
+        headers.forEach(headerText => {
+          const th = document.createElement('th');
+          th.textContent = headerText;
+          th.style.padding = '8px 4px';
+          th.style.textAlign = 'left';
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        chunkRows.forEach((transaction, index) => {
+          const row = document.createElement('tr');
+          row.style.backgroundColor = index % 2 === 0 ? '#f8fafc' : 'white';
+
+          const createCell = (text, customStyle = {}) => {
+            const td = document.createElement('td');
+            td.textContent = text;
+            td.style.padding = '6px 4px';
+            td.style.border = '1px solid #e2e8f0';
+            Object.assign(td.style, customStyle);
+            return td;
+          };
+
+          row.appendChild(createCell(formatDate(transaction.created_at)));
+          row.appendChild(createCell(formatTime(transaction.created_at)));
+          row.appendChild(createCell(transaction.reference || transaction.id || 'N/A', { fontFamily: 'monospace' }));
+          row.appendChild(createCell(getTypeLabel(transaction.type)));
+          row.appendChild(createCell(transaction.name || transaction.type));
+          
+          const isPositive = transaction.type === 'deposit' || transaction.type === 'commission' || transaction.type === 'voucher_refund';
+          row.appendChild(createCell(`${getAmountPrefix(transaction.type)}$${formatAmount(transaction.amount)}`, {
+            color: isPositive ? '#10b981' : '#ef4444',
+            fontWeight: 'bold'
+          }));
+          
+          row.appendChild(createCell('Completed', { color: '#10b981', fontWeight: 'bold' }));
+
+          tbody.appendChild(row);
+        });
+
+        table.appendChild(tbody);
+        container.appendChild(table);
+
+        document.body.appendChild(container);
+
+        // Take Screenshot
+        const canvas = await html2canvas(container, {
+          scale: 1.5,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+
+        if (c < totalChunks - 1) {
+          pdf.addPage();
+        }
+
+        document.body.removeChild(container);
       }
 
-      titleDiv.appendChild(title);
-      titleDiv.appendChild(subtitle);
-      titleDiv.appendChild(userInfo);
-
-      header.appendChild(logoImg);
-      header.appendChild(titleDiv);
-
-      // Summary section
-      const summary = document.createElement('div');
-      summary.style.display = 'grid';
-      summary.style.gridTemplateColumns = 'repeat(4, 1fr)';
-      summary.style.gap = '10px';
-      summary.style.marginBottom = '20px';
-      summary.style.padding = '15px';
-      summary.style.backgroundColor = '#f8fafc';
-      summary.style.borderRadius = '8px';
-      summary.style.border = '1px solid #e2e8f0';
-
-      const summaryItems = [
-        { label: 'Total Deposits', value: `$${calculateTotal('deposit')}`, color: '#10b981' },
-        { label: 'Total Commissions', value: `$${calculateTotal('commission')}`, color: '#8b5cf6' },
-        { label: 'Total Transactions', value: transactionsToExport.length.toString(), color: '#3b82f6' },
-        { label: 'Date Range', value: dateRange.start && dateRange.end ? `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}` : 'All Time', color: '#64748b' }
-      ];
-
-      summaryItems.forEach(item => {
-        const itemDiv = document.createElement('div');
-        itemDiv.style.textAlign = 'center';
-
-        const value = document.createElement('div');
-        value.textContent = item.value;
-        value.style.fontSize = '18px';
-        value.style.fontWeight = 'bold';
-        value.style.color = item.color;
-        value.style.marginBottom = '5px';
-
-        const label = document.createElement('div');
-        label.textContent = item.label;
-        label.style.fontSize = '12px';
-        label.style.color = '#64748b';
-
-        itemDiv.appendChild(value);
-        itemDiv.appendChild(label);
-        summary.appendChild(itemDiv);
-      });
-
-      // Table section
-      const table = document.createElement('table');
-      table.style.width = '100%';
-      table.style.borderCollapse = 'collapse';
-      table.style.marginTop = '20px';
-      table.style.fontSize = '10px';
-
-      // Table header
-      const thead = document.createElement('thead');
-      const headerRow = document.createElement('tr');
-      headerRow.style.backgroundColor = '#3b82f6';
-      headerRow.style.color = 'white';
-
-      const headers = ['Date', 'Time', 'Reference', 'Type', 'Description', 'Amount', 'Status'];
-      headers.forEach(headerText => {
-        const th = document.createElement('th');
-        th.textContent = headerText;
-        th.style.padding = '8px 4px';
-        th.style.textAlign = 'left';
-        th.style.border = '1px solid #ddd';
-        th.style.fontSize = '10px';
-        th.style.fontWeight = 'bold';
-        headerRow.appendChild(th);
-      });
-
-      thead.appendChild(headerRow);
-      table.appendChild(thead);
-
-      // Table body
-      const tbody = document.createElement('tbody');
-      transactionsToExport.forEach((transaction, index) => {
-        const row = document.createElement('tr');
-        row.style.backgroundColor = index % 2 === 0 ? '#f8fafc' : 'white';
-
-        // Date cell
-        const dateCell = document.createElement('td');
-        dateCell.textContent = formatDate(transaction.created_at);
-        dateCell.style.padding = '6px 4px';
-        dateCell.style.border = '1px solid #e2e8f0';
-        dateCell.style.fontSize = '9px';
-
-        // Time cell
-        const timeCell = document.createElement('td');
-        timeCell.textContent = formatTime(transaction.created_at);
-        timeCell.style.padding = '6px 4px';
-        timeCell.style.border = '1px solid #e2e8f0';
-        timeCell.style.fontSize = '9px';
-
-        // Reference cell
-        const refCell = document.createElement('td');
-        refCell.textContent = transaction.reference || transaction.id || 'N/A';
-        refCell.style.padding = '6px 4px';
-        refCell.style.border = '1px solid #e2e8f0';
-        refCell.style.fontSize = '9px';
-        refCell.style.fontFamily = 'monospace';
-
-        // Type cell
-        const typeCell = document.createElement('td');
-        typeCell.textContent = getTypeLabel(transaction.type);
-        typeCell.style.padding = '6px 4px';
-        typeCell.style.border = '1px solid #e2e8f0';
-        typeCell.style.fontSize = '9px';
-
-        // Description cell
-        const descCell = document.createElement('td');
-        descCell.textContent = transaction.name || transaction.type;
-        descCell.style.padding = '6px 4px';
-        descCell.style.border = '1px solid #e2e8f0';
-        descCell.style.fontSize = '9px';
-
-        // Amount cell
-        const amountCell = document.createElement('td');
-        amountCell.textContent = `${getAmountPrefix(transaction.type)}$${formatAmount(transaction.amount)}`;
-        amountCell.style.padding = '6px 4px';
-        amountCell.style.border = '1px solid #e2e8f0';
-        amountCell.style.fontSize = '9px';
-        amountCell.style.color = transaction.type === 'deposit' || transaction.type === 'commission' || transaction.type === 'voucher_refund' ? '#10b981' : '#ef4444';
-        amountCell.style.fontWeight = 'bold';
-
-        // Status cell
-        const statusCell = document.createElement('td');
-        statusCell.textContent = 'Completed';
-        statusCell.style.padding = '6px 4px';
-        statusCell.style.border = '1px solid #e2e8f0';
-        statusCell.style.fontSize = '9px';
-        statusCell.style.color = '#10b981';
-        statusCell.style.fontWeight = 'bold';
-
-        row.appendChild(dateCell);
-        row.appendChild(timeCell);
-        row.appendChild(refCell);
-        row.appendChild(typeCell);
-        row.appendChild(descCell);
-        row.appendChild(amountCell);
-        row.appendChild(statusCell);
-        tbody.appendChild(row);
-      });
-
-      table.appendChild(tbody);
-
-      // Footer
-      const footer = document.createElement('div');
-      footer.style.marginTop = '30px';
-      footer.style.paddingTop = '15px';
-      footer.style.borderTop = '2px solid #e2e8f0';
-      footer.style.color = '#64748b';
-      footer.style.fontSize = '8px';
-      footer.style.textAlign = 'center';
-
-      const footerText = document.createElement('p');
-      footerText.textContent = `Report generated by Xash Financial Platform • ${transactionsToExport.length} transactions shown • Currency: ${currency}`;
-      footerText.style.margin = '0';
-
-      const confidentiality = document.createElement('p');
-      confidentiality.textContent = 'This document contains confidential information. Unauthorized distribution is prohibited.';
-      confidentiality.style.margin = '5px 0 0 0';
-      confidentiality.style.fontStyle = 'italic';
-
-      footer.appendChild(footerText);
-      footer.appendChild(confidentiality);
-
-      // Assemble container
-      container.appendChild(header);
-      container.appendChild(summary);
-      container.appendChild(table);
-      container.appendChild(footer);
-
-      document.body.appendChild(container);
-
-      // Generate PDF
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape mode for more columns
-      const imgWidth = 280;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const pageHeight = pdf.internal.pageSize.height;
-      let heightLeft = imgHeight;
-      let position = 10;
-
-      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight + 10;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      // Save PDF
       const fileName = `xash-transaction-history-${new Date().toISOString().split('T')[0]}${hasActiveFilters() ? '-filtered' : ''}.pdf`;
       pdf.save(fileName);
-
-      // Clean up
-      document.body.removeChild(container);
 
     } catch (error) {
       console.error('PDF Export Error:', error);
