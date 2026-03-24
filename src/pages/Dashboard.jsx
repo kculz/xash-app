@@ -45,15 +45,27 @@ export const Dashboard = () => {
       
       // Handle the actual API response structure - same as Wallet page
       if (response.success && response.data && response.data.length > 0) {
-        const wallet = response.data[0];
-        setWalletData({
-          total_balance: parseFloat(wallet.value) || 0,
-          available_balance: parseFloat(wallet.value) - parseFloat(wallet.value_on_hold || 0) - parseFloat(wallet.value_pending || 0),
-          pending_balance: parseFloat(wallet.value_pending) || 0,
-          on_hold: parseFloat(wallet.value_on_hold) || 0,
-          currency: wallet.currency || 'USD',
-          rawData: wallet
-        });
+        const wallet = response.data.find(w => w.currency === 'USD');
+        
+        if (wallet) {
+          setWalletData({
+            total_balance: parseFloat(wallet.value) || 0,
+            available_balance: parseFloat(wallet.value) - parseFloat(wallet.value_on_hold || 0) - parseFloat(wallet.value_pending || 0),
+            pending_balance: parseFloat(wallet.value_pending) || 0,
+            on_hold: parseFloat(wallet.value_on_hold) || 0,
+            currency: 'USD',
+            rawData: wallet
+          });
+        } else {
+          setWalletData({
+            total_balance: 0,
+            available_balance: 0,
+            pending_balance: 0,
+            on_hold: 0,
+            currency: 'USD',
+            rawData: null
+          });
+        }
       } else {
         // Set default values if no data
         setWalletData({

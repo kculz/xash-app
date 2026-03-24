@@ -8,9 +8,9 @@ import { useToast } from '../../hooks/useToast';
 import { SuccessModal, ErrorModal, ConfirmationModal } from '../../components/ui/Modal';
 import { ToolStrip } from '../../components/ui/ToolStrip';
 import { api } from '../../utils/api';
-import { 
-  Send, 
-  ArrowLeft, 
+import {
+  Send,
+  ArrowLeft,
   User,
   CheckCircle2,
   AlertCircle,
@@ -28,7 +28,7 @@ export const Transfer = () => {
   const { token, user, getWalletBalance } = useAuth();
   const { success, error: toastError, loading: toastLoading } = useToast();
   const navigate = useNavigate();
-  
+
   const [step, setStep] = useState('initiate'); // 'initiate' or 'confirm'
   const [loading, setLoading] = useState(false);
   const [walletBalance, setWalletBalance] = useState(null);
@@ -62,7 +62,7 @@ export const Transfer = () => {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (response.success && response.data && response.data.length > 0) {
         // Find USD wallet or use first wallet
         const usdWallet = response.data.find(w => w.currency === 'USD') || response.data[0];
@@ -113,7 +113,7 @@ export const Transfer = () => {
     setFormError(null);
 
     try {
-      const response = await api.request(`/transfer/${transferData.id}/confirm`, {
+      const response = await api.request(`/transfer/confirm/${transferData.id}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -126,7 +126,7 @@ export const Transfer = () => {
         // Transfer completed successfully
         const result = response.data;
         setTransferData(prev => ({ ...prev, completed: true, result }));
-        
+
         // Show success modal
         setModalData({
           title: 'Transfer Successful!',
@@ -136,7 +136,7 @@ export const Transfer = () => {
           transactionId: result.transaction_id
         });
         setShowSuccessModal(true);
-        
+
         // Refresh wallet balance
         await getWalletBalance();
         setShowConfirmModal(false);
@@ -193,7 +193,7 @@ export const Transfer = () => {
   };
 
   const formatUserNumber = (number) => {
-    return number.replace(/(\d{3})(\d{3})/, '$1-$2');
+    return number;
   };
 
   const copyToClipboard = (text) => {
@@ -249,7 +249,7 @@ Thank you for using Xash!
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     success('Receipt downloaded successfully!');
   };
 
@@ -261,7 +261,7 @@ Thank you for using Xash!
 
       {/* Header */}
       <div className="flex items-center space-x-4 mb-6">
-        <button 
+        <button
           onClick={() => navigate('/payments')}
           className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
         >
@@ -304,10 +304,10 @@ Thank you for using Xash!
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Error Display */}
           {formError && (
-            <ToolStrip 
-              type="error" 
-              message={formError} 
-              onClose={() => setFormError(null)} 
+            <ToolStrip
+              type="error"
+              message={formError}
+              onClose={() => setFormError(null)}
               className="mb-6"
             />
           )}
@@ -397,8 +397,8 @@ Thank you for using Xash!
                   loading={loading}
                   className="w-full"
                   disabled={
-                    !transferForm.recipient || 
-                    !transferForm.amount || 
+                    !transferForm.recipient ||
+                    !transferForm.amount ||
                     parseFloat(transferForm.amount) <= 0 ||
                     parseFloat(transferForm.amount) > getAvailableBalance()
                   }

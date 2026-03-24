@@ -17,7 +17,25 @@ export const api = {
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
+      let data = {};
+      const contentType = response.headers.get('content-type');
+      
+      try {
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json();
+        } else {
+          const text = await response.text();
+          data = { 
+            message: text.includes('<!DOCTYPE html>') 
+              ? `Server Error (${response.status}): HTML response received` 
+              : text || `Request failed with status ${response.status}` 
+          };
+          console.warn(`Non-JSON response from ${endpoint}:`, text.substring(0, 200));
+        }
+      } catch (e) {
+        console.error('Error reading response body:', e);
+        data = { message: 'Failed to read response from server' };
+      }
 
       if (!response.ok) {
         // Only handle 401 Unauthorized for non-login endpoints
