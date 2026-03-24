@@ -453,7 +453,7 @@ export const Payments = () => {
                         <p className={`font-semibold ${
                           activity.type === 'transfer' ? 'text-red-400' : 'text-green-400'
                         }`}>
-                          {activity.type === 'transfer' ? '-' : '+'}{activity.amount.toFixed(2)}
+                          {activity.type === 'transfer' ? '-' : '+'}{Math.abs(activity.amount).toFixed(2)}
                         </p>
                       </div>
                       <span className="text-green-400 text-xs">Completed</span>
