@@ -35,6 +35,7 @@ export const Payments = () => {
   const paymentServices = [
     {
       title: 'Airtime',
+      buttonLabel: 'Buy Airtime',
       description: 'Buy airtime for all networks (USD only)',
       icon: Smartphone,
       path: '/payments/airtime',
@@ -44,6 +45,7 @@ export const Payments = () => {
     },
     {
       title: 'Bundles',
+      buttonLabel: 'Buy Bundles',
       description: 'Data bundles and internet packages (USD only)',
       icon: Wifi,
       path: '/payments/bundles',
@@ -53,6 +55,7 @@ export const Payments = () => {
     },
     {
       title: 'Electricity',
+      buttonLabel: 'Buy Electricity',
       description: 'ZESA token purchases (USD only)',
       icon: Zap,
       path: '/payments/electricity',
@@ -62,6 +65,7 @@ export const Payments = () => {
     },
     {
       title: 'Transfer',
+      buttonLabel: 'Transfer',
       description: 'Send money to other users (USD only)',
       icon: Send,
       path: '/payments/transfer',
@@ -382,7 +386,7 @@ export const Payments = () => {
                         handleServiceClick(service.path);
                       }}
                     >
-                      <span>Get Started</span>
+                      <span>{service.buttonLabel}</span>
                       <DollarSign className="w-4 h-4" />
                     </Button>
                   </div>
