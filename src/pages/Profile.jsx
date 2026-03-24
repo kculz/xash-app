@@ -363,7 +363,7 @@ export const Profile = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-1">BP Number</label>
                       <div className="p-3 bg-gray-900 rounded-lg border border-gray-700">
-                        <span className="text-white font-mono">{profileData.business.bp_number}</span>
+                        <span className="text-white font-mono">{profileData.business.bp_number || 'N/A'}</span>
                       </div>
                     </div>
                   </div>
@@ -373,9 +373,11 @@ export const Profile = () => {
                     <div className="flex items-center space-x-2 p-3 bg-gray-900 rounded-lg border border-gray-700">
                       <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
                       <span className="text-white">
-                        {profileData.business.home_address?.address_line_1}
-                        {profileData.business.home_address?.address_line_2 && `, ${profileData.business.home_address.address_line_2}`}
-                        {profileData.business.home_address?.city && `, ${profileData.business.home_address.city}`}
+                        {[
+                          profileData.business.home_address?.address_line_1,
+                          profileData.business.home_address?.address_line_2,
+                          profileData.business.home_address?.city
+                        ].filter(Boolean).join(', ') || 'N/A'}
                       </span>
                     </div>
                   </div>
@@ -385,9 +387,11 @@ export const Profile = () => {
                     <div className="flex items-center space-x-2 p-3 bg-gray-900 rounded-lg border border-gray-700">
                       <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
                       <span className="text-white">
-                        {profileData.business.business_address?.business_address_line_1}
-                        {profileData.business.business_address?.business_address_line_2 && `, ${profileData.business.business_address.business_address_line_2}`}
-                        {profileData.business.business_address?.business_city && `, ${profileData.business.business_address.business_city}`}
+                        {[
+                          profileData.business.business_address?.business_address_line_1,
+                          profileData.business.business_address?.business_address_line_2,
+                          profileData.business.business_address?.business_city
+                        ].filter(Boolean).join(', ') || 'N/A'}
                       </span>
                     </div>
                   </div>
