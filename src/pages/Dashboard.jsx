@@ -14,7 +14,11 @@ import {
   ArrowRightLeft,
   Clock,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  Smartphone,
+  Zap,
+  Wifi,
+  Send
 } from 'lucide-react';
 import { Helmet } from 'react-helmet';
 
@@ -119,26 +123,53 @@ export const Dashboard = () => {
 
   const quickActions = [
     {
-      title: 'Transaction History',
-      description: 'View your transaction history',
-      icon: BarChart3,
-      path: '/history',
-      color: 'bg-blue-600'
+      title: 'Buy Airtime',
+      description: 'Recharge phone credit instantly',
+      icon: Smartphone,
+      path: '/payments/airtime',
+      color: 'bg-emerald-600',
+      buttonLabel: 'Buy'
     },
     {
-      title: 'Commissions',
-      description: 'Check your commission earnings',
-      icon: DollarSign,
-      path: '/commissions',
-      color: 'bg-violet-600'
+      title: 'Buy Bundles',
+      description: 'Internet or data packages',
+      icon: Wifi,
+      path: '/payments/bundles',
+      color: 'bg-blue-600',
+      buttonLabel: 'Buy'
+    },
+    {
+      title: 'Buy Electricity',
+      description: 'ZESA electricity tokens',
+      icon: Zap,
+      path: '/payments/electricity',
+      color: 'bg-amber-600',
+      buttonLabel: 'Buy'
+    },
+    {
+      title: 'Transfer Money',
+      description: 'Send funds to other users',
+      icon: Send,
+      path: '/payments/transfer',
+      color: 'bg-violet-600',
+      buttonLabel: 'Send'
+    },
+    {
+      title: 'History',
+      description: 'View transaction logs',
+      icon: BarChart3,
+      path: '/history',
+      color: 'bg-slate-600',
+      buttonLabel: 'View'
     },
     {
       title: 'Wallet',
-      description: 'Manage your balances and funds',
+      description: 'Manage your balances',
       icon: DollarSign,
       path: '/wallet',
-      color: 'bg-green-600'
-    },
+      color: 'bg-teal-600',
+      buttonLabel: 'Manage'
+    }
   ];
 
   const recentActivities = [
@@ -306,7 +337,7 @@ export const Dashboard = () => {
                     onClick={() => navigate(action.path)}
                     className="w-full group-hover:bg-blue-700 transition-colors duration-200"
                   >
-                    View Details
+                    {action.buttonLabel || 'View'}
                   </Button>
                 </div>
               </div>
