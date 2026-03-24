@@ -54,6 +54,7 @@ export const History = () => {
   const [exportFormat, setExportFormat] = useState('');
   const [copiedId, setCopiedId] = useState(null);
   const exportRef = useRef(null);
+  const isFetchingAll = useRef(false);
 
   // Server-side pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -231,11 +232,9 @@ export const History = () => {
   };
 
   const formatAmount = (amount) => {
-    if (typeof amount === 'string') {
-      return parseFloat(amount).toFixed(2);
-    }
-    if (typeof amount === 'number') {
-      return amount.toFixed(2);
+    let num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (typeof num === 'number' && !isNaN(num)) {
+      return Math.abs(num).toFixed(2);
     }
     return '0.00';
   };
@@ -365,15 +364,18 @@ export const History = () => {
   useEffect(() => {
     const handleFiltersChanged = async () => {
       if (hasActiveFilters()) {
-        if (!allTransactionsData) {
+        if (!allTransactionsData && !isFetchingAll.current) {
+          isFetchingAll.current = true;
           setLoading(true);
           try {
             const allData = await fetchAllTransactions();
             setAllTransactionsData(allData);
           } catch (error) {
             console.error(error);
+          } finally {
+            isFetchingAll.current = false;
+            setLoading(false);
           }
-          setLoading(false);
         }
         setCurrentPage(1);
       } else {
@@ -1166,18 +1168,28 @@ export const History = () => {
                 </p>
                 <div className="flex space-x-2">
                   <button
+                    disabled={exporting}
                     onClick={exportToPDF}
-                    className="flex items-center space-x-2 px-4 py-2 text-sm bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg transition-colors"
+                    className="flex items-center space-x-2 px-4 py-2 text-sm bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <FileText className="w-4 h-4" />
-                    <span>Export PDF</span>
+                    {exporting && exportFormat === 'pdf' ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FileText className="w-4 h-4" />
+                    )}
+                    <span>{exporting && exportFormat === 'pdf' ? 'Exporting...' : 'Export PDF'}</span>
                   </button>
                   <button
+                    disabled={exporting}
                     onClick={exportToExcel}
-                    className="flex items-center space-x-2 px-4 py-2 text-sm bg-green-500/20 text-green-400 hover:bg-green-500/30 rounded-lg transition-colors"
+                    className="flex items-center space-x-2 px-4 py-2 text-sm bg-green-500/20 text-green-400 hover:bg-green-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <FileText className="w-4 h-4" />
-                    <span>Export Excel</span>
+                    {exporting && exportFormat === 'excel' ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FileText className="w-4 h-4" />
+                    )}
+                    <span>{exporting && exportFormat === 'excel' ? 'Exporting...' : 'Export Excel'}</span>
                   </button>
                 </div>
               </div>
