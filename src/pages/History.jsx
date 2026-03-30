@@ -67,9 +67,8 @@ export const History = () => {
     total: 0
   });
 
-  // Client-side all data for filtering
-  const [allTransactionsData, setAllTransactionsData] = useState(null);
   const ITEMS_PER_PAGE = 20;
+  const EXPORT_PAGE_SIZE = 100;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -85,13 +84,38 @@ export const History = () => {
 
   useEffect(() => {
     fetchHistory(1);
-  }, [currency]);
+  }, [currency, filterType, searchTerm, dateRange.start, dateRange.end]);
+
+  const buildHistoryQuery = (page = 1, perPage = ITEMS_PER_PAGE) => {
+    const params = new URLSearchParams();
+    params.set('page', page);
+    params.set('per_page', perPage);
+
+    if (filterType && filterType !== 'all') {
+      params.set('type', filterType);
+    }
+
+    if (searchTerm) {
+      params.set('search', searchTerm);
+    }
+
+    if (dateRange.start) {
+      params.set('from_date', dateRange.start);
+    }
+
+    if (dateRange.end) {
+      params.set('to_date', dateRange.end);
+    }
+
+    return params.toString();
+  };
 
   const fetchHistory = async (page = 1) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.request(`/reports/history/${currency}?page=${page}`, {
+      const queryString = buildHistoryQuery(page, ITEMS_PER_PAGE);
+      const response = await api.request(`/reports/history/${currency}?${queryString}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -108,6 +132,7 @@ export const History = () => {
         setCurrentPage(page);
       } else {
         setTransactions([]);
+        setPaginationMeta({ ...paginationMeta, total: 0, last_page: 1, from: 0, to: 0 });
       }
     } catch (error) {
       console.error('Failed to fetch history:', error);
@@ -125,8 +150,9 @@ export const History = () => {
   // Fetch ALL pages for export
   const fetchAllTransactions = async () => {
     try {
-      // Fetch first page to get total pages
-      const firstPage = await api.request(`/reports/history/${currency}?page=1`, {
+      // Fetch first page to get total pages with applied filters
+      const firstPageQuery = buildHistoryQuery(1, EXPORT_PAGE_SIZE);
+      const firstPage = await api.request(`/reports/history/${currency}?${firstPageQuery}`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -136,10 +162,10 @@ export const History = () => {
       let allData = [...firstPage.data];
       const lastPage = firstPage.meta?.last_page || 1;
 
-      // Fetch remaining pages sequentially to avoid parallel request failures
       if (lastPage > 1) {
         for (let p = 2; p <= lastPage; p++) {
-          const pageResponse = await api.request(`/reports/history/${currency}?page=${p}`, {
+          const pageQuery = buildHistoryQuery(p, EXPORT_PAGE_SIZE);
+          const pageResponse = await api.request(`/reports/history/${currency}?${pageQuery}`, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -339,56 +365,11 @@ export const History = () => {
     return searchTerm !== '' || filterType !== 'all' || dateRange.start !== '' || dateRange.end !== '';
   };
 
-  // Determine which transactions to display and pagination info
-  let transactionsToDisplay = [];
-  let totalRecords = 0;
-  let totalPages = 1;
+  // Determine which transactions to display and pagination info from server
+  const transactionsToDisplay = transactions;
+  const totalRecords = paginationMeta.total || 0;
+  const totalPages = paginationMeta.last_page || 1;
 
-  if (hasActiveFilters() && allTransactionsData) {
-    const fullyFiltered = applyFilters(allTransactionsData);
-    totalRecords = fullyFiltered.length;
-    totalPages = Math.max(1, Math.ceil(totalRecords / ITEMS_PER_PAGE));
-    transactionsToDisplay = fullyFiltered.slice(
-      (currentPage - 1) * ITEMS_PER_PAGE,
-      currentPage * ITEMS_PER_PAGE
-    );
-  } else {
-    // Unfiltered: use server pagination
-    transactionsToDisplay = transactions;
-    totalRecords = paginationMeta.total || 0;
-    totalPages = paginationMeta.last_page || 1;
-  }
-
-  // Effect to handle switching between filtered and unfiltered states
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    const handleFiltersChanged = async () => {
-      if (hasActiveFilters()) {
-        if (!allTransactionsData && !isFetchingAll.current) {
-          isFetchingAll.current = true;
-          setLoading(true);
-          try {
-            const allData = await fetchAllTransactions();
-            setAllTransactionsData(allData);
-          } catch (error) {
-            console.error(error);
-          } finally {
-            isFetchingAll.current = false;
-            setLoading(false);
-          }
-        }
-        setCurrentPage(1);
-      } else {
-        // No filters: fallback to standard server pagination
-        if (currentPage !== 1) {
-          fetchHistory(1);
-        } else {
-          fetchHistory(currentPage);
-        }
-      }
-    };
-    handleFiltersChanged();
-  }, [searchTerm, filterType, dateRange.start, dateRange.end]);
 
   const transactionTypes = [
     { value: 'all', label: 'All Transactions' },
@@ -696,6 +677,65 @@ export const History = () => {
     }
   };
 
+  const exportToCSV = async () => {
+    try {
+      setExporting(true);
+      setExportFormat('csv');
+      setExportDropdownOpen(false);
+
+      const allTransactions = await fetchAllTransactions();
+      const transactionsToExport = applyFilters(allTransactions);
+
+      if (transactionsToExport.length === 0) {
+        alert('No transactions to export');
+        return;
+      }
+
+      const escapeValue = (value) => {
+        if (value === null || value === undefined) return '';
+        const str = String(value);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      };
+
+      const headers = ['Date', 'Time', 'Reference', 'Type', 'Description', 'Amount', 'Status', 'Currency'];
+      const rows = transactionsToExport.map(t => {
+        const date = formatDate(t.created_at);
+        const time = formatTime(t.created_at);
+        const reference = t.reference || t.id || 'N/A';
+        const type = getTypeLabel(t.type);
+        const description = t.name || t.type || '';
+        const amount = `${getAmountPrefix(t.type)}${formatAmount(t.amount)}`;
+        const status = t.success ? 'Completed' : 'Failed';
+        const currencyValue = t.currency || currency;
+
+        return [date, time, reference, type, description, amount, status, currencyValue]
+          .map(escapeValue)
+          .join(',');
+      });
+
+      const csvContent = [headers.join(','), ...rows].join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `xash-transaction-history-${new Date().toISOString().split('T')[0]}${hasActiveFilters() ? '-filtered' : ''}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error('CSV Export Error:', error);
+      alert('Failed to generate CSV file. Please try again.');
+    } finally {
+      setExporting(false);
+      setExportFormat('');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900">
@@ -793,7 +833,7 @@ export const History = () => {
                 ) : (
                   <>
                     <Download className="w-4 h-4" />
-                    <span>Export ({hasActiveFilters() && allTransactionsData ? applyFilters(allTransactionsData).length : totalRecords})</span>
+                    <span>Export ({totalRecords})</span>
                     <ChevronDown className="w-4 h-4" />
                   </>
                 )}
@@ -823,6 +863,18 @@ export const History = () => {
                     <div className="text-left">
                       <div className="font-medium">Export as Excel</div>
                       <div className="text-gray-400 text-xs">Spreadsheet format</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={exportToCSV}
+                    className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-white hover:bg-gray-700 transition-colors duration-200"
+                  >
+                    <div className="p-2 bg-blue-500/20 rounded-lg">
+                      <FileText className="w-4 h-4 text-blue-400" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-medium">Export as CSV</div>
+                      <div className="text-gray-400 text-xs">Comma-separated values</div>
                     </div>
                   </button>
                 </div>
@@ -1106,8 +1158,7 @@ export const History = () => {
                 <button
                   onClick={() => {
                     const prevPage = Math.max(1, currentPage - 1);
-                    if (hasActiveFilters()) setCurrentPage(prevPage);
-                    else fetchHistory(prevPage);
+                    fetchHistory(prevPage);
                   }}
                   disabled={currentPage === 1 || loading}
                   className="px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 rounded-lg text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -1130,8 +1181,7 @@ export const History = () => {
                     <button
                       key={page}
                       onClick={() => {
-                        if (hasActiveFilters()) setCurrentPage(page);
-                        else fetchHistory(page);
+                        fetchHistory(page);
                       }}
                       disabled={loading}
                       className={`w-8 h-8 text-sm rounded-lg transition-colors ${page === currentPage
@@ -1146,8 +1196,7 @@ export const History = () => {
                 <button
                   onClick={() => {
                     const nextPage = Math.min(totalPages, currentPage + 1);
-                    if (hasActiveFilters()) setCurrentPage(nextPage);
-                    else fetchHistory(nextPage);
+                    fetchHistory(nextPage);
                   }}
                   disabled={currentPage === totalPages || loading}
                   className="px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 rounded-lg text-gray-300 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
@@ -1190,6 +1239,18 @@ export const History = () => {
                       <FileText className="w-4 h-4" />
                     )}
                     <span>{exporting && exportFormat === 'excel' ? 'Exporting...' : 'Export Excel'}</span>
+                  </button>
+                  <button
+                    disabled={exporting}
+                    onClick={exportToCSV}
+                    className="flex items-center space-x-2 px-4 py-2 text-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {exporting && exportFormat === 'csv' ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FileText className="w-4 h-4" />
+                    )}
+                    <span>{exporting && exportFormat === 'csv' ? 'Exporting...' : 'Export CSV'}</span>
                   </button>
                 </div>
               </div>
