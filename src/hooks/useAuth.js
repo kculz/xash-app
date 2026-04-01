@@ -454,9 +454,25 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Reports and History functions
-  const getTransactionHistory = async (currency = 'USD') => {
+  const getTransactionHistory = async (currency = 'USD', params = {}) => {
     try {
-      const response = await api.request(`/reports/history/${currency}`, {
+      const queryParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          if (Array.isArray(value)) {
+            value.forEach(v => queryParams.append(`${key}[]`, v));
+          } else {
+            queryParams.append(key, value);
+          }
+        }
+      });
+
+      const queryString = queryParams.toString();
+      const endpoint = queryString 
+        ? `/reports/history/${currency}?${queryString}` 
+        : `/reports/history/${currency}`;
+
+      const response = await api.request(endpoint, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`

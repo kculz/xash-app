@@ -84,37 +84,43 @@ export const History = () => {
 
   useEffect(() => {
     fetchHistory(1);
-  }, [currency, filterType, searchTerm, dateRange.start, dateRange.end]);
+  }, [currency, filterType]);
 
-  const buildHistoryQuery = (page = 1, perPage = ITEMS_PER_PAGE) => {
+  const buildHistoryQuery = (page = 1, perPage = ITEMS_PER_PAGE, overrides = {}) => {
     const params = new URLSearchParams();
     params.set('page', page);
     params.set('per_page', perPage);
 
-    if (filterType && filterType !== 'all') {
-      params.set('type', filterType);
+    // Use overrides if provided, otherwise fallback to current state
+    const type = overrides.hasOwnProperty('type') ? overrides.type : filterType;
+    const search = overrides.hasOwnProperty('search') ? overrides.search : searchTerm;
+    const start = overrides.hasOwnProperty('from_date') ? overrides.from_date : dateRange.start;
+    const end = overrides.hasOwnProperty('to_date') ? overrides.to_date : dateRange.end;
+
+    if (type && type !== 'all') {
+      params.set('type', type);
     }
 
-    if (searchTerm) {
-      params.set('search', searchTerm);
+    if (search) {
+      params.set('search', search);
     }
 
-    if (dateRange.start) {
-      params.set('from_date', dateRange.start);
+    if (start) {
+      params.set('from_date', start);
     }
 
-    if (dateRange.end) {
-      params.set('to_date', dateRange.end);
+    if (end) {
+      params.set('to_date', end);
     }
 
     return params.toString();
   };
 
-  const fetchHistory = async (page = 1) => {
+  const fetchHistory = async (page = 1, overrides = {}) => {
     try {
       setLoading(true);
       setError(null);
-      const queryString = buildHistoryQuery(page, ITEMS_PER_PAGE);
+      const queryString = buildHistoryQuery(page, ITEMS_PER_PAGE, overrides);
       const response = await api.request(`/reports/history/${currency}?${queryString}`, {
         method: 'GET',
         headers: {
@@ -124,7 +130,7 @@ export const History = () => {
 
       console.log('History API Response:', response);
 
-      if (response.success && response.data) {
+      if (response.success && response.data && Array.isArray(response.data)) {
         setTransactions(response.data);
         if (response.meta) {
           setPaginationMeta(response.meta);
@@ -150,6 +156,8 @@ export const History = () => {
   // Fetch ALL pages for export
   const fetchAllTransactions = async () => {
     try {
+      setRefreshing(true); // Show a general loading state during background fetch
+      
       // Fetch first page to get total pages with applied filters
       const firstPageQuery = buildHistoryQuery(1, EXPORT_PAGE_SIZE);
       const firstPage = await api.request(`/reports/history/${currency}?${firstPageQuery}`, {
@@ -157,21 +165,36 @@ export const History = () => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
-      if (!firstPage.success || !firstPage.data) return [];
+      if (!firstPage.success || !firstPage.data || !Array.isArray(firstPage.data)) return [];
 
       let allData = [...firstPage.data];
       const lastPage = firstPage.meta?.last_page || 1;
 
+      // Only fetch more if there's more than one page
       if (lastPage > 1) {
-        for (let p = 2; p <= lastPage; p++) {
-          const pageQuery = buildHistoryQuery(p, EXPORT_PAGE_SIZE);
-          const pageResponse = await api.request(`/reports/history/${currency}?${pageQuery}`, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (pageResponse.success && pageResponse.data) {
-            allData = [...allData, ...pageResponse.data];
+        // Prepare all remaining page requests to run them in chunks or sequence
+        // Running in small parallel batches to speed up large exports
+        const totalPages = lastPage;
+        const BATCH_SIZE = 3;
+        
+        for (let i = 2; i <= totalPages; i += BATCH_SIZE) {
+          const batchPromises = [];
+          for (let p = i; p < i + BATCH_SIZE && p <= totalPages; p++) {
+            const pageQuery = buildHistoryQuery(p, EXPORT_PAGE_SIZE);
+            batchPromises.push(
+              api.request(`/reports/history/${currency}?${pageQuery}`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` }
+              })
+            );
           }
+          
+          const batchResults = await Promise.all(batchPromises);
+          batchResults.forEach(response => {
+            if (response.success && response.data && Array.isArray(response.data)) {
+              allData = [...allData, ...response.data];
+            }
+          });
         }
       }
 
@@ -179,6 +202,8 @@ export const History = () => {
     } catch (error) {
       console.error('Failed to fetch all transactions:', error);
       throw error;
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -293,7 +318,10 @@ export const History = () => {
   };
 
   const calculateTotal = (transactionType) => {
-    return getFilteredTransactions()
+    const txns = getFilteredTransactions() || [];
+    if (!Array.isArray(txns)) return '0.00';
+    
+    return txns
       .filter(t => t.type === transactionType)
       .reduce((sum, t) => {
         const amount = typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount;
@@ -315,50 +343,23 @@ export const History = () => {
     return labels[type] || type.replace(/_/g, ' ');
   };
 
-  // Filter transactions on the current page (for display purposes)
+  // Filter transactions on the current page (largely handled by server now)
   const applyFilters = (txns) => {
-    return txns.filter(transaction => {
-      // Search filter
-      const matchesSearch = searchTerm === '' ||
-        transaction.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transaction.amount?.toString().includes(searchTerm) ||
-        transaction.id?.toString().includes(searchTerm) ||
-        transaction.reference?.toString().includes(searchTerm) ||
-        transaction.name?.toLowerCase().includes(searchTerm.toLowerCase());
-
-      // Type filter
-      const matchesType = filterType === 'all' || transaction.type === filterType;
-
-      // Date range filter
-      let matchesDate = true;
-      if (dateRange.start && dateRange.end) {
-        const transactionDate = new Date(transaction.created_at);
-        const startDate = new Date(dateRange.start);
-        const endDate = new Date(dateRange.end);
-        endDate.setHours(23, 59, 59, 999);
-        matchesDate = transactionDate >= startDate && transactionDate <= endDate;
-      } else if (dateRange.start) {
-        const transactionDate = new Date(transaction.created_at);
-        const startDate = new Date(dateRange.start);
-        matchesDate = transactionDate >= startDate;
-      } else if (dateRange.end) {
-        const transactionDate = new Date(transaction.created_at);
-        const endDate = new Date(dateRange.end);
-        endDate.setHours(23, 59, 59, 999);
-        matchesDate = transactionDate <= endDate;
-      }
-
-      return matchesSearch && matchesType && matchesDate;
-    });
+    // If the data came from the server with filters already applied, 
+    // we only need to filter if there are client-side specific search needs
+    // otherwise we can just return as is or do a final safety check.
+    return txns; 
   };
 
-  const getFilteredTransactions = () => applyFilters(transactions);
+  const getFilteredTransactions = () => Array.isArray(transactions) ? transactions : [];
 
   const clearFilters = () => {
     setSearchTerm('');
     setFilterType('all');
     setDateRange({ start: '', end: '' });
     setShowDateFilter(false);
+    // Explicitly fetch with reset values to bypass state update delay
+    fetchHistory(1, { search: '', type: 'all', from_date: '', to_date: '' });
   };
 
   const hasActiveFilters = () => {
@@ -366,7 +367,7 @@ export const History = () => {
   };
 
   // Determine which transactions to display and pagination info from server
-  const transactionsToDisplay = transactions;
+  const transactionsToDisplay = Array.isArray(transactions) ? transactions : [];
   const totalRecords = paginationMeta.total || 0;
   const totalPages = paginationMeta.last_page || 1;
 
@@ -930,15 +931,24 @@ export const History = () => {
         <Card className="p-6 mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             {/* Search Input */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by type, amount, reference..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+            <div className="relative flex-1 max-w-md flex items-center space-x-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search by reference, amount, etc..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchHistory(1)}
+                  className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <Button 
+                onClick={() => fetchHistory(1)}
+                className="whitespace-nowrap px-4 py-2"
+              >
+                Search
+              </Button>
             </div>
 
             {/* Currency Selector - Only USD */}
@@ -988,24 +998,38 @@ export const History = () => {
 
           {/* Date Range Filter */}
           {showDateFilter && (
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-800/50 rounded-lg">
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Start Date</label>
-                <input
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+            <div className="mt-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={dateRange.start}
+                    onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                    onKeyDown={(e) => e.key === 'Enter' && fetchHistory(1)}
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">End Date</label>
+                  <input
+                    type="date"
+                    value={dateRange.end}
+                    onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                    onKeyDown={(e) => e.key === 'Enter' && fetchHistory(1)}
+                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">End Date</label>
-                <input
-                  type="date"
-                  value={dateRange.end}
-                  onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+              <div className="flex justify-end">
+                <Button 
+                  onClick={() => fetchHistory(1)}
+                  variant="primary"
+                  className="flex items-center space-x-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Apply Date Filter</span>
+                </Button>
               </div>
             </div>
           )}

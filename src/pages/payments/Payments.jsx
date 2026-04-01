@@ -93,13 +93,13 @@ export const Payments = () => {
         totalBalance = parseFloat(usdWallet.value) || 0;
       }
 
-      // Fetch recent transactions
-      const historyResponse = await getTransactionHistory();
+      // Fetch recent transactions (only need 5 for the dashboard)
+      const historyResponse = await getTransactionHistory('USD', { per_page: 5 });
       let recentTransactions = 0;
       let recentActivityData = [];
 
       if (historyResponse.success && historyResponse.data) {
-        // Filter to only show USD transactions
+        // Find USD transactions (though the API should handle it)
         const usdTransactions = historyResponse.data.filter(transaction => 
           transaction.currency === 'USD'
         );
